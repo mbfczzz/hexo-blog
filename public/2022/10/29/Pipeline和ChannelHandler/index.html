@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+
+
+<html lang="en">
+  
+
+    <head>
+      <meta charset="utf-8" />
+       
+      <meta name="keywords" content="live life love last" />
+       
+      <meta name="description" content="a boy zzzzz" />
+      
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title> 吾</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      
+<link rel="stylesheet" href="/css/fonts/remixicon.css">
+
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.staticfile.org/pace/1.2.4/pace.min.js"></script>
+       
+ 
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bulma@5.0.1/bulma.min.css"
+      />
+      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.min.js"></script>
+
+      <!-- mermaid -->
+      
+      <style>
+        .swal2-styled.swal2-confirm {
+          font-size: 1.6rem;
+        }
+      </style>
+    </head>
+  </html>
+</html>
+
+
+<body>
+  <div id="app">
+    
+      
+      <canvas width="1777" height="841"
+        style="position: fixed; left: 0px; top: 0px; z-index: 99999; pointer-events: none;"></canvas>
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Pipeline和ChannelHandler"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+     
+    <div class="article-meta">
+      <a href="/2022/10/29/Pipeline%E5%92%8CChannelHandler/" class="article-date">
+  <time datetime="2022-10-29T05:24:00.628Z" itemprop="datePublished">2022-10-29</time>
+</a>   
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> Word count:</span>
+            <span class="post-count">2.7k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> Reading time≈</span>
+            <span class="post-count">9 min</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><p><a href="#pipeline%E5%92%8Cchannelhandler">Pipeline和ChannelHandler</a></p>
+<ul>
+<li><p><a href="#channelpipeline">ChannelPipeline</a></p>
+<ul>
+<li><p>  <a href="#%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86">事件处理</a></p>
+</li>
+<li><p>  <a href="#%E4%BA%8B%E4%BB%B6%E7%B1%BB%E5%9E%8B">事件类型</a></p>
+</li>
+<li><p>  <a href="#channelpipeline%E7%89%B9%E6%80%A7">ChannelPipeline特性</a></p>
+</li>
+</ul>
+</li>
+<li><p><a href="#channelhandler">ChannelHandler</a></p>
+<ul>
+<li><p>  <a href="#channelhandleradapter">ChannelHandlerAdapter</a></p>
+</li>
+<li><p>  <a href="#bytetomessagedecoder">ByteToMessageDecoder</a></p>
+</li>
+<li><p>  <a href="#messagetomessagedecoder">MessageToMessageDecoder</a></p>
+</li>
+<li><p>  <a href="#lengthfieldbasedframedecoder">LengthFieldBasedFrameDecoder</a></p>
+</li>
+<li><p>  <a href="#messagetobyteencoder">MessageToByteEncoder</a></p>
+</li>
+<li><p>  <a href="#messagetomessageencoder">MessageToMessageEncoder</a></p>
+</li>
+<li><p>  <a href="#lengthfieledprepender">LengthFieledPrepender</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="Pipeline和ChannelHandler"><a href="#Pipeline和ChannelHandler" class="headerlink" title="Pipeline和ChannelHandler"></a>Pipeline和ChannelHandler</h1><p>ChannelPipeline和ChannelHandler是Netty在进行业务处理时的重要组成组件，简单来说，ChannelHandler是进行一个业务处理的处理器，而Pipeline负责将一个个的处理器串联起来，相当于一个容器，Channel中的数据会进入Pipeline，在容器中的各个处理器中按照顺序进行流转。</p>
+<p>ChannelPipelie和ChannelHandler的关系图示：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/64979057476941388430f708ec975dd7~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>在Netty中，一个请求会创建一个Channel通道，每个Channel会绑定一个Pipeline,Pipeline是一个双向链表结构，它们是一一对应的关系。ChannelHandlerContext是ChannelHandler的上下文对象，通过该对象可以获取处理器的上下文信息，如：绑定的Channel、Pipeline等。</p>
+<p>Netty的ChannelPipeline和ChannelHandler机制类似于Servlet和Filter过滤器，这类拦截器实际上是职责链模式的一种变形，主要是为了方便事件的拦截和用户业务逻辑的定制。</p>
+<p>Netty将Channel的数据管道抽象为ChannelPileline，消息在ChannelPileline中流动和传递，ChannelPileline持有I/O事件拦截器ChannelHandler的链表，由ChannelPileline进行I/O事件拦截和处理，可以方便地通过新增和删除ChannelHandler实现不同的业务逻辑定制，不需要对已有的ChannelHandler进行修改，能够实现对修改封闭和对扩展的支持。</p>
+<h2 id="ChannelPipeline"><a href="#ChannelPipeline" class="headerlink" title="ChannelPipeline"></a>ChannelPipeline</h2><p>ChannelPipeline是ChannelHandler的容器，它负责ChannelHandler的管理和事件拦截。</p>
+<h3 id="事件处理"><a href="#事件处理" class="headerlink" title="事件处理"></a>事件处理</h3><p>ChannelPipeline事件处理的流程：</p>
+<ul>
+<li><p>  底层的SocketChannel read()方法读取ByteBuf，触发ChannelRead事件，由I/O线程NioEventLoop调用ChannelPipeline的fireChannelRead(Object msg)方法，将消息(ByteBuf)传输到ChannelPipeline中</p>
+</li>
+<li><p>  消息依次被ChannelPipeline中的处理器：(例如)HeadHandler、ChannelHandler1、ChannelHandler2….TailHandler拦截和处理，在这个过程中，任何ChannelHandler都可以中断当前的流程，结束消息的传递</p>
+</li>
+<li><p>  调用ChannelHandlerContext的write方法发送消息，消息依次经过：TailHandler、ChannelHandlerN…ChannelHandler2、ChannelHandler1、HeadHandler，最终被添加到消息发送缓冲区中等待刷新和发送，在此过程中也可以中断消息传递，例如当编码失败时，就需要中断消息传递，然后构造异常的Future返回</p>
+</li>
+</ul>
+<h3 id="事件类型"><a href="#事件类型" class="headerlink" title="事件类型"></a>事件类型</h3><p>Netty的事件类型分为inbound和outbound事件两大类。</p>
+<p><strong>inbound事件</strong></p>
+<p>inbound事件通常由I/O线程触发，例如TCP链路建立、链路关闭事件、读事件、异常通知事件等。触发Inbound事件的方法如下：</p>
+<ul>
+<li><p>  <code>ChannelHandlerContext.fireChannelRegistered()</code>：Channel注册事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireChannelActive()</code>：TCP链路建立成功，Channel激活事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireChannelRead(Object)</code>：读事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireChannelReadComplete()</code>：读操作完成通知事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.ExceptionCaught(Throwable)</code>：异常通知事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireUserEventTriggered(Object)</code>：用户自定义事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireChannelWritabilityChanged()</code>：Channel的可写状态变化通知事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireChannelInactive()</code>：TCP连接关闭，链路不可用通知事件</p>
+</li>
+</ul>
+<p><strong>outbound事件</strong></p>
+<p>outbound事件通常是由用户主动发起的网络I/O操作，例如用户发起的连接操作，绑定操作，消息发送等，触发outbound事件的方法如下：</p>
+<ul>
+<li><p>  <code>ChannelHandlerContext.bind(SocketAddress, ChannelPromis)</code>：绑定本地地址事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.connect(SocketAddress, SocketAddress, ChannelPromis)</code>：连接服务器事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.write(Object, ChannelPromis)</code>：发送事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.flush()</code>：刷新事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.read()</code>：读事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.disconnect(ChannelPromis)</code>：断开连接事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.close(ChannelPromis)</code>：关闭当前Channel事件</p>
+</li>
+</ul>
+<h3 id="ChannelPipeline特性"><a href="#ChannelPipeline特性" class="headerlink" title="ChannelPipeline特性"></a>ChannelPipeline特性</h3><ul>
+<li><p>  支持运行态动态的添加或者删除ChannelHandler。例如在业务高峰期需要对系统做拥堵保护时，就可以根据当前的系统时间进行判断，如果处于业务高峰期，则动态地将系统拥堵保护ChannelHandler添加到当前的ChannelPipeline中，高峰期过后，就可以动态删除拥堵保护ChannelHandler</p>
+</li>
+<li><p>  ChannelPipeline是线程安全的。这意味着N个业务线程可以并发地操作ChannelPipeline而不存在多线程并发问题。但是ChannelHandler却不是线程安全的，这意味着尽管ChannelPipeline是线程安全的，但是用户仍然要自己保证ChannelHandler的线程安全。</p>
+</li>
+</ul>
+<h2 id="ChannelHandler"><a href="#ChannelHandler" class="headerlink" title="ChannelHandler"></a>ChannelHandler</h2><p>ChannelHandler类似于Servlet的Filter过滤器，负责对I/O事件或者I/O操作进行拦截和处理，它可以选择性地进行拦截和处理自己感兴趣的事件，也可以透传和终止事件的传递。</p>
+<p>基于ChannelHandler接口，用户可以方便地进行业务逻辑定制，例如打印日志、统一封装异常信息，性能统计和消息编解码等。</p>
+<h3 id="ChannelHandlerAdapter"><a href="#ChannelHandlerAdapter" class="headerlink" title="ChannelHandlerAdapter"></a>ChannelHandlerAdapter</h3><p>ChannelHandlerAdapter是handler的基类，它的所有接口实现都是事件透传，如果用户ChannelHandler关心某个事件，只需要覆盖ChannelHandlerAdapter对应的方法即可，对于不关心的方法，无需覆盖直接使用父类的方法，这样子类的代码就会非常简洁和清晰。</p>
+<p>在Netty中的Handler可以分为以下两大类：</p>
+<ul>
+<li><p>  <code>ChannelInboundHandler</code>：对应上文中的inbound事件处理。主要负责读事件的逻辑处理，比如，我们在一端读到一段数据，首先要解析这段数据，然后对这些数据做一系列逻辑处理，最终把响应写到对端， 在开始组装响应之前的所有的逻辑，都可以放置在 ChannelInboundHandler 里处理，它的一个最重要的方法就是 channelRead()。可以将 ChannelInboundHandler 的逻辑处理过程与 TCP 的七层协议的解析联系起来，收到的数据一层层从物理层上升到我们的应用层。</p>
+</li>
+<li><p>  <code>ChannelOutBoundHandler</code>：对应上文中的outbound事件处理。是处理写数据的逻辑，它是定义我们一端在组装完响应之后，把数据写到对端的逻辑，比如，我们封装好一个 response 对象，接下来我们有可能对这个 response 做一些其他的特殊逻辑，然后，再编码成 ByteBuf，最终写到对端，它里面最核心的一个方法就是 write()，读者可以将 ChannelOutBoundHandler 的逻辑处理过程与 TCP 的七层协议的封装过程联系起来，我们在应用层组装响应之后，通过层层协议的封装，直到最底层的物理层。</p>
+</li>
+</ul>
+<p>这两个接口都有默认的实现类，分别是：</p>
+<ul>
+<li><p>  <code>ChannelInboundHandlerAdapter</code></p>
+</li>
+<li><p>  <code>ChanneloutBoundHandlerAdapter</code></p>
+</li>
+</ul>
+<p>它们分别实现两个大类接口的所有方法，默认情况下会把读写事件传播到下一个handler。</p>
+<p>在开发中，会有一些比较常用的Netty提供的handler供我们使用，方便快速开发，例如：</p>
+<ul>
+<li><p>  <code>ByteToMessageDecoder</code></p>
+</li>
+<li><p>  <code>MessageToMessageDecoder</code></p>
+</li>
+<li><p>  <code>LengthFieledBasedFrameDecoder</code></p>
+</li>
+<li><p>  <code>MessageToByteEncoder</code></p>
+</li>
+<li><p>  <code>MessageToMessageEncoder</code></p>
+</li>
+<li><p>  <code>LengthFieledPrepender</code></p>
+</li>
+</ul>
+<p>下面我们会一一介绍它们各自的用途。</p>
+<h3 id="ByteToMessageDecoder"><a href="#ByteToMessageDecoder" class="headerlink" title="ByteToMessageDecoder"></a>ByteToMessageDecoder</h3><p>利用NIO进行网络编程时，往往需要将读取到的字节数组或者字节缓冲区解码为业务可以使用的POJO对象，为了方便业务将ByteBuf解码为业务POJO对象，Netty提供了ByteToMessageDecoder抽象工具解码类。</p>
+<p>用户解码器handler继承ByteToMessageDecoder，然<code>后实现void decode(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out)</code>抽象方法即可完成ByteBuf到POJO类的转换。</p>
+<p>由于ByteToMessageDecoder并没有考虑TCP粘包和拆包的问题， 使用该解码器时需要用户自行处理该问题。正因为如此，对于大多数场景不会直接继承ByteToMessageDecoder，而是继承其他更高级的解码器来解决粘包拆包问题。</p>
+<h3 id="MessageToMessageDecoder"><a href="#MessageToMessageDecoder" class="headerlink" title="MessageToMessageDecoder"></a>MessageToMessageDecoder</h3><p>MessageToMessageDecoder是Netty的二次解码器，它的职责是将一个对象二次解码为其他对象。</p>
+<p>为什么叫做二次解码器？从SocketChannel读取到的TCP数据报是ByteBuf，实际上就是字节数组，我们首先需要将ByteBuf字节数组读取处理，转换为Java对象，然后对Java对象根据某些规则进行二次解码，将其解码为另一个POJO对象。因为MessageToMessageDecoder在ByteToMessageDecoder之后，所以称之为二次解码器。</p>
+<p>例如：以HTTP+XML协议栈为例，第一次解码往往是将字节数组解码为HttpRequest对象，然后对HttpRequest消息中的消息体字符串进行二次解码，将XML格式的字符串解码为POJO对象，这就用到了二次解码器。</p>
+<p>在使用的时候，用户的解码器只需要实现void decode(ChannelHandlerContext ctx, I msg, List out)抽象方法即可，由于它是将一个POJO解码为另一个POJO，所以不存在粘包拆包问题。</p>
+<h3 id="LengthFieldBasedFrameDecoder"><a href="#LengthFieldBasedFrameDecoder" class="headerlink" title="LengthFieldBasedFrameDecoder"></a>LengthFieldBasedFrameDecoder</h3><p>该解码器是一个比较常用的解决TCP粘包拆包问题的解码器。</p>
+<p>如何区分一个整包消息，通常由如下4种做法：</p>
+<ul>
+<li><p>  固定长度，例如120个字节代码一个整包消息，不足的前面补0，解码器在处理这类定长消息的时候比较简单，每次读取到指定长度的字节后进行解码</p>
+</li>
+<li><p>  通过回车换行符区分消息，例如FTP协议，这类区分消息的方式多用于文本协议</p>
+</li>
+<li><p>  通过分隔符区分整包消息</p>
+</li>
+<li><p>  通过指定长度来标识整包消息</p>
+</li>
+</ul>
+<p>由于TCP本身存在粘包和拆包问题，所以通常情况下必须自己处理半包消息。利用LengthFieldBasedFrameDecoder解码器可以自动解决半包问题，通常的用法如下：</p>
+<p>pipeline.addLast(new LengthFieldBasedFrameDecoder(1024, 0, 4));</p>
+<p>pipeline.addLast(new StringDecoder());</p>
+<p>复制代码</p>
+<p>将LengthFieldBasedFrameDecoder解码器加入ChannelPipeline，指定正确的参数组合，它可以将Netty的ByteBuf解码成单个的整包消息，后面的业务解码器拿到的就是完整的数据报，正常进行解码即可，不需要再考虑半包问题，方便了业务消息的解码。</p>
+<h3 id="MessageToByteEncoder"><a href="#MessageToByteEncoder" class="headerlink" title="MessageToByteEncoder"></a>MessageToByteEncoder</h3><p>MessageToByteEncoder负责将POJO对象编码成ByteBuf，用户的编码器继承MessageToByteEncoder，实现<code>void encode(ChannelHandlerContext ctx, I msg, ByteBuf out)</code>接口,示例代码：</p>
+<p>public class IntegerEncoder extends MessageToByteEncoder&lt;Integer&gt; {</p>
+<p>@Override</p>
+<p>protected void encode(ChannelHandlerContext channelHandlerContext, Integer integer, ByteBuf byteBuf) throws Exception {</p>
+<p>byteBuf.writeInt(integer);</p>
+<p>}</p>
+<p>}</p>
+<p>复制代码</p>
+<h3 id="MessageToMessageEncoder"><a href="#MessageToMessageEncoder" class="headerlink" title="MessageToMessageEncoder"></a>MessageToMessageEncoder</h3><p>将一个POJO对象编码为另一个对象，以HTTP+XML协议为例，它的一种实现发送是：先将POJO对象编码为XML字符串，再将字符串编码为HTTP请求或者应答消息。对于复杂协议，往往需要经历多次编码，为了便于功能扩展，可以通过多个编码器组合来实现相关功能。</p>
+<p>用户的解码器继承MessageToMessageEncoder解码器，实现<code>void encode(ChannelHandlerContext channelHandlerContext, Integer integer, List&lt;Object&gt; list)</code>方法列表。示例代码如下：</p>
+<p>public class IntegerToStringEncoder extends MessageToMessageEncoder&lt;Integer&gt; {</p>
+<p>@Override</p>
+<p>protected void encode(ChannelHandlerContext channelHandlerContext, Integer integer, List&lt;Object&gt; list) throws Exception {</p>
+<p>list.add(integer.toString());</p>
+<p>}</p>
+<p>}</p>
+<p>复制代码</p>
+<h3 id="LengthFieledPrepender"><a href="#LengthFieledPrepender" class="headerlink" title="LengthFieledPrepender"></a>LengthFieledPrepender</h3><p>如果协议中的第一个字段为长度字段，Netty提供了LengthFieledPrepender编码器， 它可以计算当前待发送的消息的二进制字节长度，将该长度添加到ByteBuf的缓冲区头中。</p>
+<p>例如编码前的字符为”HELLO,WORLD”占12字节，通过LengthFieledPrepender编码后，消息组成为消息长度字段+消息字符串本身，总的占14个字节。</p>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>Copyright： </strong>
+          
+          Copyright is owned by the author. For commercial reprints, please contact the author for authorization. For non-commercial reprints, please indicate the source.
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://mbfczzzz.top/2022/10/29/Pipeline%E5%92%8CChannelHandler/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2022/10/29/Channel/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            (no title)
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2022/10/29/netty/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title"></div>
+      </a>
+    
+  </nav>
+
+  
+   
+    
+    <script src="https://cdn.staticfile.org/twikoo/1.4.18/twikoo.all.min.js"></script>
+    <div id="twikoo" class="twikoo"></div>
+    <script>
+        twikoo.init({
+            envId: ""
+        })
+    </script>
+ 
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2022
+        <i class="ri-heart-fill heart_icon"></i> mbfczzzz
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>Visitors:<span id="busuanzi_value_site_uv"></span></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>Views:<span id="busuanzi_value_page_pv"></span></span>
+</span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src='https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914'></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>    
+    </main>
+    <div class="float_btns">
+      <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+    </div>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="吾"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tools">工具</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/friends">友链</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/2019/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="/images/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="/images/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-3.6.0.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.staticfile.org/jquery-modal/0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.staticfile.org/jquery-modal/0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.staticfile.org/justifiedGallery/3.8.1/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.staticfile.org/photoswipe/4.1.3/default-skin/default-skin.min.css">
+<script src="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe.min.js"></script>
+<script src="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+ 
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+ 
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+ 
+<script src="/js/clickBoom2.js"></script>
+ 
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.staticfile.org/clipboard.js/2.0.10/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+ 
+<script src="/js/dz.js"></script>
+ 
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+    <div id="music">
+    
+    
+    
+    <iframe frameborder="no" border="1" marginwidth="0" marginheight="0" width="200" height="52"
+        src="//music.163.com/outchain/player?type=2&id=22707008&auto=1&height=32"></iframe>
+</div>
+
+<style>
+    #music {
+        position: fixed;
+        right: 15px;
+        bottom: 0;
+        z-index: 998;
+    }
+</style>
+    
+    
+
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+
+
+<html lang="en">
+  
+
+    <head>
+      <meta charset="utf-8" />
+       
+      <meta name="keywords" content="live life love last" />
+       
+      <meta name="description" content="a boy zzzzz" />
+      
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title> 吾</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      
+<link rel="stylesheet" href="/css/fonts/remixicon.css">
+
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.staticfile.org/pace/1.2.4/pace.min.js"></script>
+       
+ 
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bulma@5.0.1/bulma.min.css"
+      />
+      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.min.js"></script>
+
+      <!-- mermaid -->
+      
+      <style>
+        .swal2-styled.swal2-confirm {
+          font-size: 1.6rem;
+        }
+      </style>
+    </head>
+  </html>
+</html>
+
+
+<body>
+  <div id="app">
+    
+      
+      <canvas width="1777" height="841"
+        style="position: fixed; left: 0px; top: 0px; z-index: 99999; pointer-events: none;"></canvas>
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-ByteBuffer"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+     
+    <div class="article-meta">
+      <a href="/2022/10/29/ByteBuffer/" class="article-date">
+  <time datetime="2022-10-29T05:24:00.601Z" itemprop="datePublished">2022-10-29</time>
+</a>   
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> Word count:</span>
+            <span class="post-count">1.7k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> Reading time≈</span>
+            <span class="post-count">6 min</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><p>  <a href="#bytebuffer">ByteBuffer</a></p>
+</li>
+<li><p>  <a href="#bytebuffer-%E5%88%86%E6%9E%90">ByteBuffer 分析</a></p>
+</li>
+<li><p><a href="#bytebuf-%E8%AF%BB%E5%86%99%E6%93%8D%E4%BD%9C">ByteBuf 读写操作</a></p>
+<ul>
+<li><p>  <a href="#%E5%88%86%E9%85%8D%E7%BC%93%E5%86%B2%E5%8C%BA">分配缓冲区</a></p>
+</li>
+<li><p>  <a href="#%E5%86%99%E6%93%8D%E4%BD%9C">写操作</a></p>
+</li>
+<li><p>  <a href="#%E8%AF%BB%E6%93%8D%E4%BD%9C">读操作</a></p>
+</li>
+</ul>
+</li>
+<li><p>  <a href="#bytebuf-%E5%8A%A8%E6%80%81%E6%89%A9%E5%AE%B9">ByteBuf 动态扩容</a></p>
+</li>
+<li><p>  <a href="#%E6%9C%80%E5%90%8E">最后</a></p>
+</li>
+</ul>
+<h1 id="ByteBuffer"><a href="#ByteBuffer" class="headerlink" title="ByteBuffer"></a>ByteBuffer</h1><h1 id="ByteBuffer-分析"><a href="#ByteBuffer-分析" class="headerlink" title="ByteBuffer 分析"></a>ByteBuffer 分析</h1><p>在分析 ByteBuf 之前，先简单讲下 ByteBuffer 类的操作。便于更好理解 ByteBuf 。</p>
+<p>ByteBuffer 的读写操作共用一个位置指针，读写过程通过以下代码案例分析：</p>
+<p>// 分配一个缓冲区，并指定大小</p>
+<p>ByteBuffer buffer = ByteBuffer.allocate(100);</p>
+<p>// 设置当前最大缓存区大小限制</p>
+<p>buffer.limit(15);</p>
+<p>System.out.println(String.format(“allocate: pos=%s lim=%s cap=%s”, buffer.position(), buffer.limit(), buffer.capacity()));</p>
+<p>String content = “ytao公众号”;</p>
+<p>// 向缓冲区写入数据</p>
+<p>buffer.put(content.getBytes());</p>
+<p>System.out.println(String.format(“put: pos=%s lim=%s cap=%s”, buffer.position(), buffer.limit(), buffer.capacity()));</p>
+<p>复制代码</p>
+<p>其中打印了缓冲区三个参数，分别是：</p>
+<ul>
+<li><p>  position 读写指针位置</p>
+</li>
+<li><p>  limit 当前缓存区大小限制</p>
+</li>
+<li><p>  capacity 缓冲区大小</p>
+</li>
+</ul>
+<p>打印结果：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ed115bf0db~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>当我们写入内容后，读写指针值为 13，<code>ytao公众号</code>英文字符占 1 个 byte，每个中文占 4 个 byte，刚好 13，小于设置的当前缓冲区大小 15。</p>
+<p>接下来，读取内容里的 ytao 数据：</p>
+<p>buffer.flip();</p>
+<p>System.out.println(String.format(“flip: pos=%s lim=%s cap=%s”, buffer.position(), buffer.limit(), buffer.capacity()));</p>
+<p>byte[] readBytes = new byte[4];</p>
+<p>buffer.get(readBytes);</p>
+<p>System.out.println(String.format(“get(4): pos=%s lim=%s cap=%s”, buffer.position(), buffer.limit(), buffer.capacity()));</p>
+<p>String readContent = new String(readBytes);</p>
+<p>System.out.println(“readContent:”+readContent);</p>
+<p>复制代码</p>
+<p>读取内容需要创建个 byte 数组来接收，并制定接收的数据大小。</p>
+<p>在写入数据后再读取内容，必须主动调用<code>ByteBuffer#flip</code>或<code>ByteBuffer#clear</code>。</p>
+<p><code>ByteBuffer#flip</code>它会将写入数据后的指针位置值作为当前缓冲区大小，再将指针位置归零。会使写入数据的缓冲区改为待取数据的缓冲区，也就是说，读取数据会从刚写入的数据第一个索引作为读取数据的起始索引。</p>
+<p><code>ByteBuffer#flip</code>相关源码：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ed37365971~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p><code>ByteBuffer#clear</code>则会重置 limit 为默认值，与 capacity 大小相同。</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ed69afb054~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>接下读取剩余部分内容：</p>
+<p>第二次读取的时候，可使用<code>buffer#remaining</code>来获取大于或等于剩下的内容的字节大小，该函数实现为<code>limit - position</code>，所以当前缓冲区域一定在这个值范围内。</p>
+<p>readBytes = new byte[buffer.remaining()];</p>
+<p>buffer.get(readBytes);</p>
+<p>System.out.println(String.format(“get(remaining): pos=%s lim=%s cap=%s”, buffer.position(), buffer.limit(), buffer.capacity()));</p>
+<p>复制代码</p>
+<p>打印结果：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301eda7c816ed~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>以上操作过程中，索引变化如图：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301edcf975805~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h1 id="ByteBuf-读写操作"><a href="#ByteBuf-读写操作" class="headerlink" title="ByteBuf 读写操作"></a>ByteBuf 读写操作</h1><p>ByteBuf 有读写指针是分开的，分别是<code>buf#readerIndex</code>和<code>buf#writerIndex</code>，当前缓冲器大小<code>buf#capacity</code>。</p>
+<p>这里缓冲区被两个指针索引和容量划分为三个区域：</p>
+<ul>
+<li><p>  0 -&gt; readerIndex 为已读缓冲区域，已读区域可重用节约内存，readerIndex 值大于或等于 0</p>
+</li>
+<li><p>  readerIndex -&gt; writerIndex 为可读缓冲区域，writerIndex 值大于或等于 readerIndex</p>
+</li>
+<li><p>  writerIndex -&gt; capacity 为可写缓冲区域，capacity 值大于或等于 writerIndex</p>
+</li>
+</ul>
+<p>如下图所示：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301edff08c607~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h2 id="分配缓冲区"><a href="#分配缓冲区" class="headerlink" title="分配缓冲区"></a>分配缓冲区</h2><p>ByteBuf 分配一个缓冲区，仅仅给定一个初始值就可以。默认是 256。初始值不像 ByteBuffer 一样是最大值，ByteBuf 的最大值是<code>Integer.MAX_VALUE</code></p>
+<p>ByteBuf buf = Unpooled.buffer(13);</p>
+<p>System.out.println(String.format(“init: ridx=%s widx=%s cap=%s”, buf.readerIndex(), buf.writerIndex(), buf.capacity()));</p>
+<p>复制代码</p>
+<p>打印结果：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ee1f9e8206~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h2 id="写操作"><a href="#写操作" class="headerlink" title="写操作"></a>写操作</h2><p>ByteBuf 写操作和 ByteBuffer 类似，只是写指针是单独记录的，ByteBuf 的写操作支持多种类型，有以下多个API：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ee437cecb5~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>写入字节数组类型：</p>
+<p>String content = “ytao公众号”;</p>
+<p>buf.writeBytes(content.getBytes());</p>
+<p>System.out.println(String.format(“write: ridx=%s widx=%s cap=%s”, buf.readerIndex(), buf.writerIndex(), buf.capacity()));</p>
+<p>复制代码</p>
+<p>打印结果：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ee65386cee~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>索引示意图：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ee883fa765~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h2 id="读操作"><a href="#读操作" class="headerlink" title="读操作"></a>读操作</h2><p>一样的，ByteBuf 写操作和 ByteBuffer 类似，只是写指针是单独记录的，ByteBuf 的读操作支持多种类型，有以下多个API：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301eead03c33c~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>从当前 readerIndex 位置读取四个字节内容：</p>
+<p>byte[] dst = new byte[4];</p>
+<p>buf.readBytes(dst);</p>
+<p>System.out.println(new String(dst));</p>
+<p>System.out.println(String.format(“read(4): ridx=%s widx=%s cap=%s”, buf.readerIndex(), buf.writerIndex(), buf.capacity()));</p>
+<p>复制代码</p>
+<p>打印结果：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301eed607ebd0~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>索引示意图：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301eef8a486f4~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h1 id="ByteBuf-动态扩容"><a href="#ByteBuf-动态扩容" class="headerlink" title="ByteBuf 动态扩容"></a>ByteBuf 动态扩容</h1><p>通过上面的 ByteBuffer 分配缓冲区例子，向里面添加 [ytao公众号ytao公众号] 内容，使写入的内容大于 limit 的值。</p>
+<p>ByteBuffer buffer = ByteBuffer.allocate(100);</p>
+<p>buffer.limit(15);</p>
+<p>String content = “ytao公众号ytao公众号”;</p>
+<p>buffer.put(content.getBytes());</p>
+<p>复制代码</p>
+<p>运行结果异常：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ef1d20afa5~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>内容字节大小超过了 limit 的值时，缓冲区溢出异常，所以我们每次写入数据前，得检查缓区大小是否有足够空间，这样对编码上来说，不是一个好的体验。</p>
+<p>使用 ByteBuf 添加同样的内容，给定同样的初始容器大小。</p>
+<p>ByteBuf buf = Unpooled.buffer(15);</p>
+<p>String content = “ytao公众号ytao公众号”;</p>
+<p>buf.writeBytes(content.getBytes());</p>
+<p>System.out.println(String.format(“write: ridx=%s widx=%s cap=%s”, buf.readerIndex(), buf.writerIndex(), buf.capacity()));</p>
+<p>复制代码</p>
+<p>打印运行结果:</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ef3c41d8b4~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>通过上面打印信息，可以看到 cap 从设置的 15 变为了 64，当我们容器大小不够时，就是进行扩容，接下来我们分析扩容过程中是如何做的。 进入 writeBytes 里面：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ef5d5fc8ac~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>校验写入内容长度：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ef82dfde30~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>在可写区域检查里：</p>
+<ul>
+<li><p>  如果写入内容为空，抛出非法参数异常。</p>
+</li>
+<li><p>  如果写入内容大小小于或等于可写区域大小，则返回当前缓冲区，当中的<code>writableBytes()</code>函数为可写区域大小<code>capacity - writerIndex</code></p>
+</li>
+<li><p>  如果写入内容大小大于最大可写区域大小，则抛出索引越界异常。</p>
+</li>
+<li><p>  最后剩下条件的就是写入内容大小大于可写区域，小于最大区域大小，则分配一个新的缓冲区域。</p>
+</li>
+</ul>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301efae6ef789~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>在容量不足，重新分配缓冲区的里面，以 4M 为阀门：</p>
+<ul>
+<li><p>  如果待写内容刚好为 4M, 那么就分配 4M 的缓冲区。</p>
+</li>
+<li><p>  如果待写内容超过这个阀门且与阀门值之和不大于最大容量值，就分配(阀门值+内容大小值)的缓冲区；如果超过这个阀门且与阀门值之和大于最大容量值，则分配最大容量的缓冲区。</p>
+</li>
+<li><p>  如果待写内容不超过阀门值且大于 64，那么待分配缓冲区大小就以 64 的大小进行倍增，直到相等或大于待写内容。</p>
+</li>
+<li><p>  如果待写内容不超过阀门值且不大于 64，则返回待分配缓冲区大小为 64。</p>
+</li>
+</ul>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301efd9e86adb~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h1 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h1><blockquote>
+<p>Netty 实现的缓冲区，八个基本类型中，除了布尔类型，其他7种都有自己对应的 Buffer，但是实际使用过程中， ByteBuf 才是我们尝试用的，它可兼容任何类型。ByteBuf 在 Netty 体系中是最基础也是最重要的一员，要想更好掌握和使用 Netty，先理解并掌握 ByteBuf 是必需条件之一。</p>
+</blockquote>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>Copyright： </strong>
+          
+          Copyright is owned by the author. For commercial reprints, please contact the author for authorization. For non-commercial reprints, please indicate the source.
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://mbfczzzz.top/2022/10/29/ByteBuffer/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2022/10/29/netty%E7%9A%84%E4%B8%80%E4%BA%9B%E6%A6%82%E5%BF%B5%EF%BC%88%E4%BA%8C%EF%BC%89/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            (no title)
+          
+        </div>
+      </a>
+    
+    
+  </nav>
+
+  
+   
+    
+    <script src="https://cdn.staticfile.org/twikoo/1.4.18/twikoo.all.min.js"></script>
+    <div id="twikoo" class="twikoo"></div>
+    <script>
+        twikoo.init({
+            envId: ""
+        })
+    </script>
+ 
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2022
+        <i class="ri-heart-fill heart_icon"></i> mbfczzzz
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>Visitors:<span id="busuanzi_value_site_uv"></span></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>Views:<span id="busuanzi_value_page_pv"></span></span>
+</span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src='https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914'></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>    
+    </main>
+    <div class="float_btns">
+      <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+    </div>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="吾"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tools">工具</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/friends">友链</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/2019/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="/images/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="/images/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-3.6.0.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.staticfile.org/jquery-modal/0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.staticfile.org/jquery-modal/0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.staticfile.org/justifiedGallery/3.8.1/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.staticfile.org/photoswipe/4.1.3/default-skin/default-skin.min.css">
+<script src="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe.min.js"></script>
+<script src="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+ 
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+ 
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+ 
+<script src="/js/clickBoom2.js"></script>
+ 
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.staticfile.org/clipboard.js/2.0.10/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+ 
+<script src="/js/dz.js"></script>
+ 
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+    <div id="music">
+    
+    
+    
+    <iframe frameborder="no" border="1" marginwidth="0" marginheight="0" width="200" height="52"
+        src="//music.163.com/outchain/player?type=2&id=22707008&auto=1&height=32"></iframe>
+</div>
+
+<style>
+    #music {
+        position: fixed;
+        right: 15px;
+        bottom: 0;
+        z-index: 998;
+    }
+</style>
+    
+    
+
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,1075 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title></title>
+    <url>/2022/10/29/ByteBuffer/</url>
+    <content><![CDATA[<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><p>  <a href="#bytebuffer">ByteBuffer</a></p>
+</li>
+<li><p>  <a href="#bytebuffer-%E5%88%86%E6%9E%90">ByteBuffer 分析</a></p>
+</li>
+<li><p><a href="#bytebuf-%E8%AF%BB%E5%86%99%E6%93%8D%E4%BD%9C">ByteBuf 读写操作</a></p>
+<ul>
+<li><p>  <a href="#%E5%88%86%E9%85%8D%E7%BC%93%E5%86%B2%E5%8C%BA">分配缓冲区</a></p>
+</li>
+<li><p>  <a href="#%E5%86%99%E6%93%8D%E4%BD%9C">写操作</a></p>
+</li>
+<li><p>  <a href="#%E8%AF%BB%E6%93%8D%E4%BD%9C">读操作</a></p>
+</li>
+</ul>
+</li>
+<li><p>  <a href="#bytebuf-%E5%8A%A8%E6%80%81%E6%89%A9%E5%AE%B9">ByteBuf 动态扩容</a></p>
+</li>
+<li><p>  <a href="#%E6%9C%80%E5%90%8E">最后</a></p>
+</li>
+</ul>
+<h1 id="ByteBuffer"><a href="#ByteBuffer" class="headerlink" title="ByteBuffer"></a>ByteBuffer</h1><h1 id="ByteBuffer-分析"><a href="#ByteBuffer-分析" class="headerlink" title="ByteBuffer 分析"></a>ByteBuffer 分析</h1><p>在分析 ByteBuf 之前，先简单讲下 ByteBuffer 类的操作。便于更好理解 ByteBuf 。</p>
+<p>ByteBuffer 的读写操作共用一个位置指针，读写过程通过以下代码案例分析：</p>
+<p>// 分配一个缓冲区，并指定大小</p>
+<p>ByteBuffer buffer = ByteBuffer.allocate(100);</p>
+<p>// 设置当前最大缓存区大小限制</p>
+<p>buffer.limit(15);</p>
+<p>System.out.println(String.format(“allocate: pos=%s lim=%s cap=%s”, buffer.position(), buffer.limit(), buffer.capacity()));</p>
+<p>String content = “ytao公众号”;</p>
+<p>// 向缓冲区写入数据</p>
+<p>buffer.put(content.getBytes());</p>
+<p>System.out.println(String.format(“put: pos=%s lim=%s cap=%s”, buffer.position(), buffer.limit(), buffer.capacity()));</p>
+<p>复制代码</p>
+<p>其中打印了缓冲区三个参数，分别是：</p>
+<ul>
+<li><p>  position 读写指针位置</p>
+</li>
+<li><p>  limit 当前缓存区大小限制</p>
+</li>
+<li><p>  capacity 缓冲区大小</p>
+</li>
+</ul>
+<p>打印结果：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ed115bf0db~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>当我们写入内容后，读写指针值为 13，<code>ytao公众号</code>英文字符占 1 个 byte，每个中文占 4 个 byte，刚好 13，小于设置的当前缓冲区大小 15。</p>
+<p>接下来，读取内容里的 ytao 数据：</p>
+<p>buffer.flip();</p>
+<p>System.out.println(String.format(“flip: pos=%s lim=%s cap=%s”, buffer.position(), buffer.limit(), buffer.capacity()));</p>
+<p>byte[] readBytes = new byte[4];</p>
+<p>buffer.get(readBytes);</p>
+<p>System.out.println(String.format(“get(4): pos=%s lim=%s cap=%s”, buffer.position(), buffer.limit(), buffer.capacity()));</p>
+<p>String readContent = new String(readBytes);</p>
+<p>System.out.println(“readContent:”+readContent);</p>
+<p>复制代码</p>
+<p>读取内容需要创建个 byte 数组来接收，并制定接收的数据大小。</p>
+<p>在写入数据后再读取内容，必须主动调用<code>ByteBuffer#flip</code>或<code>ByteBuffer#clear</code>。</p>
+<p><code>ByteBuffer#flip</code>它会将写入数据后的指针位置值作为当前缓冲区大小，再将指针位置归零。会使写入数据的缓冲区改为待取数据的缓冲区，也就是说，读取数据会从刚写入的数据第一个索引作为读取数据的起始索引。</p>
+<p><code>ByteBuffer#flip</code>相关源码：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ed37365971~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p><code>ByteBuffer#clear</code>则会重置 limit 为默认值，与 capacity 大小相同。</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ed69afb054~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>接下读取剩余部分内容：</p>
+<p>第二次读取的时候，可使用<code>buffer#remaining</code>来获取大于或等于剩下的内容的字节大小，该函数实现为<code>limit - position</code>，所以当前缓冲区域一定在这个值范围内。</p>
+<p>readBytes = new byte[buffer.remaining()];</p>
+<p>buffer.get(readBytes);</p>
+<p>System.out.println(String.format(“get(remaining): pos=%s lim=%s cap=%s”, buffer.position(), buffer.limit(), buffer.capacity()));</p>
+<p>复制代码</p>
+<p>打印结果：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301eda7c816ed~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>以上操作过程中，索引变化如图：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301edcf975805~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h1 id="ByteBuf-读写操作"><a href="#ByteBuf-读写操作" class="headerlink" title="ByteBuf 读写操作"></a>ByteBuf 读写操作</h1><p>ByteBuf 有读写指针是分开的，分别是<code>buf#readerIndex</code>和<code>buf#writerIndex</code>，当前缓冲器大小<code>buf#capacity</code>。</p>
+<p>这里缓冲区被两个指针索引和容量划分为三个区域：</p>
+<ul>
+<li><p>  0 -&gt; readerIndex 为已读缓冲区域，已读区域可重用节约内存，readerIndex 值大于或等于 0</p>
+</li>
+<li><p>  readerIndex -&gt; writerIndex 为可读缓冲区域，writerIndex 值大于或等于 readerIndex</p>
+</li>
+<li><p>  writerIndex -&gt; capacity 为可写缓冲区域，capacity 值大于或等于 writerIndex</p>
+</li>
+</ul>
+<p>如下图所示：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301edff08c607~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h2 id="分配缓冲区"><a href="#分配缓冲区" class="headerlink" title="分配缓冲区"></a>分配缓冲区</h2><p>ByteBuf 分配一个缓冲区，仅仅给定一个初始值就可以。默认是 256。初始值不像 ByteBuffer 一样是最大值，ByteBuf 的最大值是<code>Integer.MAX_VALUE</code></p>
+<p>ByteBuf buf = Unpooled.buffer(13);</p>
+<p>System.out.println(String.format(“init: ridx=%s widx=%s cap=%s”, buf.readerIndex(), buf.writerIndex(), buf.capacity()));</p>
+<p>复制代码</p>
+<p>打印结果：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ee1f9e8206~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h2 id="写操作"><a href="#写操作" class="headerlink" title="写操作"></a>写操作</h2><p>ByteBuf 写操作和 ByteBuffer 类似，只是写指针是单独记录的，ByteBuf 的写操作支持多种类型，有以下多个API：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ee437cecb5~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>写入字节数组类型：</p>
+<p>String content = “ytao公众号”;</p>
+<p>buf.writeBytes(content.getBytes());</p>
+<p>System.out.println(String.format(“write: ridx=%s widx=%s cap=%s”, buf.readerIndex(), buf.writerIndex(), buf.capacity()));</p>
+<p>复制代码</p>
+<p>打印结果：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ee65386cee~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>索引示意图：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ee883fa765~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h2 id="读操作"><a href="#读操作" class="headerlink" title="读操作"></a>读操作</h2><p>一样的，ByteBuf 写操作和 ByteBuffer 类似，只是写指针是单独记录的，ByteBuf 的读操作支持多种类型，有以下多个API：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301eead03c33c~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>从当前 readerIndex 位置读取四个字节内容：</p>
+<p>byte[] dst = new byte[4];</p>
+<p>buf.readBytes(dst);</p>
+<p>System.out.println(new String(dst));</p>
+<p>System.out.println(String.format(“read(4): ridx=%s widx=%s cap=%s”, buf.readerIndex(), buf.writerIndex(), buf.capacity()));</p>
+<p>复制代码</p>
+<p>打印结果：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301eed607ebd0~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>索引示意图：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301eef8a486f4~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h1 id="ByteBuf-动态扩容"><a href="#ByteBuf-动态扩容" class="headerlink" title="ByteBuf 动态扩容"></a>ByteBuf 动态扩容</h1><p>通过上面的 ByteBuffer 分配缓冲区例子，向里面添加 [ytao公众号ytao公众号] 内容，使写入的内容大于 limit 的值。</p>
+<p>ByteBuffer buffer = ByteBuffer.allocate(100);</p>
+<p>buffer.limit(15);</p>
+<p>String content = “ytao公众号ytao公众号”;</p>
+<p>buffer.put(content.getBytes());</p>
+<p>复制代码</p>
+<p>运行结果异常：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ef1d20afa5~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>内容字节大小超过了 limit 的值时，缓冲区溢出异常，所以我们每次写入数据前，得检查缓区大小是否有足够空间，这样对编码上来说，不是一个好的体验。</p>
+<p>使用 ByteBuf 添加同样的内容，给定同样的初始容器大小。</p>
+<p>ByteBuf buf = Unpooled.buffer(15);</p>
+<p>String content = “ytao公众号ytao公众号”;</p>
+<p>buf.writeBytes(content.getBytes());</p>
+<p>System.out.println(String.format(“write: ridx=%s widx=%s cap=%s”, buf.readerIndex(), buf.writerIndex(), buf.capacity()));</p>
+<p>复制代码</p>
+<p>打印运行结果:</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ef3c41d8b4~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>通过上面打印信息，可以看到 cap 从设置的 15 变为了 64，当我们容器大小不够时，就是进行扩容，接下来我们分析扩容过程中是如何做的。 进入 writeBytes 里面：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ef5d5fc8ac~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>校验写入内容长度：</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301ef82dfde30~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>在可写区域检查里：</p>
+<ul>
+<li><p>  如果写入内容为空，抛出非法参数异常。</p>
+</li>
+<li><p>  如果写入内容大小小于或等于可写区域大小，则返回当前缓冲区，当中的<code>writableBytes()</code>函数为可写区域大小<code>capacity - writerIndex</code></p>
+</li>
+<li><p>  如果写入内容大小大于最大可写区域大小，则抛出索引越界异常。</p>
+</li>
+<li><p>  最后剩下条件的就是写入内容大小大于可写区域，小于最大区域大小，则分配一个新的缓冲区域。</p>
+</li>
+</ul>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301efae6ef789~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>在容量不足，重新分配缓冲区的里面，以 4M 为阀门：</p>
+<ul>
+<li><p>  如果待写内容刚好为 4M, 那么就分配 4M 的缓冲区。</p>
+</li>
+<li><p>  如果待写内容超过这个阀门且与阀门值之和不大于最大容量值，就分配(阀门值+内容大小值)的缓冲区；如果超过这个阀门且与阀门值之和大于最大容量值，则分配最大容量的缓冲区。</p>
+</li>
+<li><p>  如果待写内容不超过阀门值且大于 64，那么待分配缓冲区大小就以 64 的大小进行倍增，直到相等或大于待写内容。</p>
+</li>
+<li><p>  如果待写内容不超过阀门值且不大于 64，则返回待分配缓冲区大小为 64。</p>
+</li>
+</ul>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2019/12/23/16f301efd9e86adb~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h1 id="最后"><a href="#最后" class="headerlink" title="最后"></a>最后</h1><blockquote>
+<p>Netty 实现的缓冲区，八个基本类型中，除了布尔类型，其他7种都有自己对应的 Buffer，但是实际使用过程中， ByteBuf 才是我们尝试用的，它可兼容任何类型。ByteBuf 在 Netty 体系中是最基础也是最重要的一员，要想更好掌握和使用 Netty，先理解并掌握 ByteBuf 是必需条件之一。</p>
+</blockquote>
+]]></content>
+  </entry>
+  <entry>
+    <title></title>
+    <url>/2022/10/29/netty%E7%9A%84%E4%B8%80%E4%BA%9B%E6%A6%82%E5%BF%B5%EF%BC%88%E4%BA%8C%EF%BC%89/</url>
+    <content><![CDATA[<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><p><a href="#netty%E7%9A%84%E4%B8%80%E4%BA%9B%E6%A6%82%E5%BF%B5%E4%BA%8C">netty的一些概念（二）</a></p>
+<ul>
+<li><p><a href="#bionioaio">BIO/NIO/AIO</a></p>
+<ul>
+<li><p>  <a href="#%E9%98%BB%E5%A1%9Eblock%E4%B8%8E%E9%9D%9E%E9%98%BB%E5%A1%9Enon-block">阻塞（Block）与非阻塞（Non-Block）</a></p>
+</li>
+<li><p>  <a href="#%E5%90%8C%E6%AD%A5synchronous%E4%B8%8E%E5%BC%82%E6%AD%A5asynchronous">同步（Synchronous）与异步（Asynchronous）</a></p>
+</li>
+</ul>
+</li>
+<li><p><a href="#reactor-%E6%A8%A1%E5%9E%8B">Reactor 模型</a></p>
+<ul>
+<li><p>  <a href="#%E5%8D%95%E7%BA%BF%E7%A8%8B%E7%9A%84-reactor-%E6%A8%A1%E5%9E%8B">单线程的 Reactor 模型</a></p>
+</li>
+<li><p>  <a href="#%E5%A4%9A%E7%BA%BF%E7%A8%8B%E7%9A%84-reactor-%E6%A8%A1%E5%9E%8B">多线程的 Reactor 模型</a></p>
+</li>
+<li><p>  <a href="#%E5%A4%9A%E7%BA%BF%E7%A8%8B%E4%B8%BB%E4%BB%8E-reactor-%E6%A8%A1%E5%9E%8B">多线程主从 Reactor 模型</a></p>
+</li>
+<li><p>  <a href="#netty-%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B">Netty 执行流程</a></p>
+</li>
+<li><p><a href="#netty-%E6%A0%B8%E5%BF%83%E7%BB%84%E4%BB%B6">Netty 核心组件</a></p>
+<ul>
+<li><p>  <a href="#channel">Channel</a></p>
+</li>
+<li><p>  <a href="#eventloop-%E4%B8%8E-eventloopgroup">EventLoop 与 EventLoopGroup</a></p>
+</li>
+<li><p>  <a href="#serverbootstrap-%E4%B8%8E-bootstrap">ServerBootstrap 与 Bootstrap</a></p>
+</li>
+<li><p>  <a href="#channelhandler-%E4%B8%8E-channelpipeline">ChannelHandler 与 ChannelPipeline</a></p>
+</li>
+<li><p>  <a href="#channelfuture">ChannelFuture</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="netty的一些概念（二）"><a href="#netty的一些概念（二）" class="headerlink" title="netty的一些概念（二）"></a>netty的一些概念（二）</h1><h2 id="BIO-NIO-AIO"><a href="#BIO-NIO-AIO" class="headerlink" title="BIO/NIO/AIO"></a>BIO/NIO/AIO</h2><h3 id="阻塞（Block）与非阻塞（Non-Block）"><a href="#阻塞（Block）与非阻塞（Non-Block）" class="headerlink" title="阻塞（Block）与非阻塞（Non-Block）"></a>阻塞（Block）与非阻塞（Non-Block）</h3><p>阻塞和非阻塞是进程在访问数据的时候，数据是否准备就绪的一种处理方式，当数据没有准备的时候。</p>
+<p><strong>阻塞</strong>：往往需要等待缓冲区中的数据准备好过后才处理其他的事情，否则一直等待在那里。</p>
+<p><strong>非阻塞</strong>:当我们的进程访问我们的数据缓冲区的时候，如果数据没有准备好则直接返回，不会等待。如果数据已经准备好，也直接返回。</p>
+<p><strong>阻塞 IO ：</strong></p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/736d468562784011a28a4ba38d0f7e30~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p><strong>非阻塞 IO ：</strong></p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f9a7cf5d0b944c7b904e68ee46182baf~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h3 id="同步（Synchronous）与异步（Asynchronous）"><a href="#同步（Synchronous）与异步（Asynchronous）" class="headerlink" title="同步（Synchronous）与异步（Asynchronous）"></a>同步（Synchronous）与异步（Asynchronous）</h3><p>同步和异步都是基于应用程序和操作系统处理 IO 事件所采用的方式。比如</p>
+<p><strong>同步：</strong> 是应用程序要直接参与 IO 读写的操作。</p>
+<p><strong>异步：</strong> 所有的 IO 读写交给操作系统去处理，应用程序只需要等待通知。</p>
+<p>同步方式在处理 IO 事件的时候，必须阻塞在某个方法上面等待我们的 IO 事件完成（阻塞 IO 事件或者通过轮询 IO事件的方式），对于异步来说，所有的 IO 读写都交给了操作系统。这个时候，我们可以去做其他的事情，并不需要去完成真正的 IO 操作，当操作完成 IO 后，会给我们的应用程序一个通知。</p>
+<p>所以异步相比较于同步带来的直接好处就是在我们处理IO数据的时候，异步的方式我们可以把这部分等待所消耗的资源用于处理其他事务，提升我们服务自身的性能。</p>
+<p><strong>同步 IO ：</strong></p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/8f867c38b0294ef4ab7d7f50297e7612~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p><strong>异步 IO ：</strong></p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/54d1ee94e6db40c0a74c8eafe50931da~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h2 id="Reactor-模型"><a href="#Reactor-模型" class="headerlink" title="Reactor 模型"></a>Reactor 模型</h2><h3 id="单线程的-Reactor-模型"><a href="#单线程的-Reactor-模型" class="headerlink" title="单线程的 Reactor 模型"></a>单线程的 Reactor 模型</h3><p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/0b3be289e52c4cb68320c5b50db807aa~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h3 id="多线程的-Reactor-模型"><a href="#多线程的-Reactor-模型" class="headerlink" title="多线程的 Reactor 模型"></a>多线程的 Reactor 模型</h3><p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/8853a72373c9489f945a1b808a5c7c8d~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h3 id="多线程主从-Reactor-模型"><a href="#多线程主从-Reactor-模型" class="headerlink" title="多线程主从 Reactor 模型"></a>多线程主从 Reactor 模型</h3><p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/b2f319c5019648069feaac3ff71c12db~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h3 id="Netty-执行流程"><a href="#Netty-执行流程" class="headerlink" title="Netty 执行流程"></a>Netty 执行流程</h3><p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f692ce289a3e4c518306820fcb6114d3~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h3 id="Netty-核心组件"><a href="#Netty-核心组件" class="headerlink" title="Netty 核心组件"></a>Netty 核心组件</h3><h4 id="Channel"><a href="#Channel" class="headerlink" title="Channel"></a>Channel</h4><p>Channel是 Java NIO 的一个基本构造。可以看作是传入或传出数据的载体。因此，它可以被打开或关闭，连接或者断开连接。</p>
+<h4 id="EventLoop-与-EventLoopGroup"><a href="#EventLoop-与-EventLoopGroup" class="headerlink" title="EventLoop 与 EventLoopGroup"></a>EventLoop 与 EventLoopGroup</h4><p>EventLoop 定义了Netty的核心抽象，用来处理连接的生命周期中所发生的事件，在内部，将会为每个Channel分配一个EventLoop。</p>
+<p>EventLoopGroup 是一个 EventLoop 池，包含很多的 EventLoop。</p>
+<p>Netty 为每个 Channel 分配了一个 EventLoop，用于处理用户连接请求、对用户请求的处理等所有事件。EventLoop 本身只是一个线程驱动，在其生命周期内只会绑定一个线程，让该线程处理一个 Channel 的所有 IO 事件。</p>
+<p>一个 Channel 一旦与一个 EventLoop 相绑定，那么在 Channel 的整个生命周期内是不能改变的。一个 EventLoop 可以与多个 Channel 绑定。即 Channel 与 EventLoop 的关系是 n:1，而 EventLoop 与线程的关系是 1:1。</p>
+<h4 id="ServerBootstrap-与-Bootstrap"><a href="#ServerBootstrap-与-Bootstrap" class="headerlink" title="ServerBootstrap 与 Bootstrap"></a>ServerBootstrap 与 Bootstrap</h4><p>Bootstarp 和 ServerBootstrap 被称为引导类，指对应用程序进行配置，并使他运行起来的过程。Netty处理引导的方式是使你的应用程序和网络层相隔离。</p>
+<p>Bootstrap 是客户端的引导类，Bootstrap 在调用 bind()（连接UDP）和 connect()（连接TCP）方法时，会新创建一个 Channel，仅创建一个单独的、没有父 Channel 的 Channel 来实现所有的网络交换。</p>
+<p>ServerBootstrap 是服务端的引导类，ServerBootstarp 在调用 bind() 方法时会创建一个 ServerChannel 来接受来自客户端的连接，并且该 ServerChannel 管理了多个子 Channel 用于同客户端之间的通信。</p>
+<h4 id="ChannelHandler-与-ChannelPipeline"><a href="#ChannelHandler-与-ChannelPipeline" class="headerlink" title="ChannelHandler 与 ChannelPipeline"></a>ChannelHandler 与 ChannelPipeline</h4><p>ChannelHandler 是对 Channel 中数据的处理器，这些处理器可以是系统本身定义好的编解码器，也可以是用户自定义的。这些处理器会被统一添加到一个 ChannelPipeline 的对象中，然后按照添加的顺序对 Channel 中的数据进行依次处理。</p>
+<h4 id="ChannelFuture"><a href="#ChannelFuture" class="headerlink" title="ChannelFuture"></a>ChannelFuture</h4><p>Netty 中所有的 I/O 操作都是异步的，即操作不会立即得到返回结果，所以 Netty 中定义了一个 ChannelFuture 对象作为这个异步操作的“代言人”，表示异步操作本身。如果想获取到该异步操作的返回值，可以通过该异步操作对象的addListener() 方法为该异步操作添加监 NIO 网络编程框架 Netty 听器，为其注册回调：当结果出来后马上调用执行。</p>
+<p>Netty 的异步编程模型都是建立在 Future 与回调概念之上的。</p>
+]]></content>
+  </entry>
+  <entry>
+    <title></title>
+    <url>/2022/10/29/netty%E7%9A%84%E4%B8%80%E4%BA%9B%E6%A6%82%E5%BF%B5%EF%BC%88%E4%B8%80%EF%BC%89/</url>
+    <content><![CDATA[<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><p><a href="#netty%E7%9A%84%E4%B8%80%E4%BA%9B%E6%A6%82%E5%BF%B5%E4%B8%80">netty的一些概念（一）</a></p>
+<ul>
+<li><p>  <a href="#%E5%8D%8F%E8%AE%AE">协议</a></p>
+</li>
+<li><p><a href="#bionioaio">BIO/NIO/AIO</a></p>
+<ul>
+<li><ul>
+<li><p>  <a href="#1bio%E5%90%8C%E6%AD%A5%E9%98%BB%E5%A1%9Eio">1、BIO（同步阻塞IO）</a></p>
+</li>
+<li><p>  <a href="#2nio%E5%90%8C%E6%AD%A5%E9%9D%9E%E9%98%BB%E5%A1%9Eio">2、NIO（同步非阻塞IO）</a></p>
+</li>
+<li><p>  <a href="#3aio%E5%BC%82%E6%AD%A5%E9%9D%9E%E9%98%BB%E5%A1%9Eio">3、AIO（异步非阻塞IO）</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><a href="#netty%E6%9E%B6%E6%9E%84">Netty架构</a></p>
+<ul>
+<li><p>  <a href="#1-core-%E6%A0%B8%E5%BF%83%E5%B1%82">1. Core 核心层</a></p>
+</li>
+<li><p>  <a href="#2-protocol-support-%E5%8D%8F%E8%AE%AE%E6%94%AF%E6%8C%81%E5%B1%82">2. Protocol Support 协议支持层</a></p>
+</li>
+<li><p>  <a href="#3-transport-service-%E4%BC%A0%E8%BE%93%E6%9C%8D%E5%8A%A1%E5%B1%82">3. Transport Service 传输服务层</a></p>
+</li>
+</ul>
+</li>
+<li><p><a href="#%E4%BA%8Cnetty-%E9%80%BB%E8%BE%91%E6%9E%B6%E6%9E%84">二、Netty 逻辑架构</a></p>
+<ul>
+<li><p>  <a href="#1-%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1%E5%B1%82">1. 网络通信层</a></p>
+</li>
+<li><p>  <a href="#2-%E4%BA%8B%E4%BB%B6%E8%B0%83%E5%BA%A6%E5%B1%82">2. 事件调度层</a></p>
+</li>
+<li><p>  <a href="#3-%E6%9C%8D%E5%8A%A1%E7%BC%96%E6%8E%92%E5%B1%82">3. 服务编排层</a></p>
+</li>
+</ul>
+</li>
+<li><p>  <a href="#%E4%B8%89%E7%BB%84%E4%BB%B6%E5%85%B3%E7%B3%BB%E6%A2%B3%E7%90%86">三、组件关系梳理</a></p>
+</li>
+<li><p><a href="#%E5%9B%9Bnetty-%E6%BA%90%E7%A0%81%E7%BB%93%E6%9E%84">四、Netty 源码结构</a></p>
+<ul>
+<li><ul>
+<li><p>  <a href="#core-%E6%A0%B8%E5%BF%83%E5%B1%82%E6%A8%A1%E5%9D%97">Core 核心层模块</a></p>
+</li>
+<li><p>  <a href="#protocol-support-%E5%8D%8F%E8%AE%AE%E6%94%AF%E6%8C%81%E5%B1%82%E6%A8%A1%E5%9D%97">Protocol Support 协议支持层模块</a></p>
+</li>
+<li><p>  <a href="#transport-service-%E4%BC%A0%E8%BE%93%E6%9C%8D%E5%8A%A1%E5%B1%82%E6%A8%A1%E5%9D%97">Transport Service 传输服务层模块</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="netty的一些概念（一）"><a href="#netty的一些概念（一）" class="headerlink" title="netty的一些概念（一）"></a>netty的一些概念（一）</h1><h2 id="协议"><a href="#协议" class="headerlink" title="协议"></a>协议</h2><ul>
+<li>  网络协议为计算机网络中进行数据交换而建立的规则、标准或约定的集合 例如平时我们签订的合同，主要用于约束两方的一些行为以及必须遵守的规则和约定，网络协议亦是如此，如果想要双方能够达成通信，必须约束双方，如果两个终端使用的字符集不一样，那么两个终端就不能识别对方发送的消息，所以无法完成通信，为了能进行通信，规定每个终端都要将各自字符集中的字符先变换为标准字符集的字符后，才进入网络传送，到达目的终端之后，再变换为该终端字符集的字符</li>
+</ul>
+<h2 id="BIO-NIO-AIO"><a href="#BIO-NIO-AIO" class="headerlink" title="BIO/NIO/AIO"></a>BIO/NIO/AIO</h2><h4 id="1、BIO（同步阻塞IO）"><a href="#1、BIO（同步阻塞IO）" class="headerlink" title="1、BIO（同步阻塞IO）"></a>1、BIO（同步阻塞IO）</h4><ul>
+<li><p>  服务端创建一个<strong>ServerSocket</strong>，客户端就有一个Socket去链接这个ServerSocket，然后ServerSocket接收到客户端的Socket请求之后就会建立一个专属的<strong>Socket+线程</strong>去和<strong>客户端的Socket</strong>去通信（长时间维护）</p>
+</li>
+<li><p>  <strong>同步阻塞通信</strong>：客户端发送一个请求，服务端Socket就进行处理后返回，响应必须是等待处理完毕之后才会返回的，在这之前是什么也做不了。</p>
+</li>
+<li><p>  缺点：每次一个客户端的接入就会有一个线程+Socket对其进行通信，这会导致客户端接入太多，服务端线程过多，导致崩溃。</p>
+</li>
+</ul>
+<p>*</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2020/4/7/17153ff087c520ea~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h4 id="2、NIO（同步非阻塞IO）"><a href="#2、NIO（同步非阻塞IO）" class="headerlink" title="2、NIO（同步非阻塞IO）"></a>2、NIO（同步非阻塞IO）</h4><ul>
+<li><p>  <strong>Buffer</strong>（缓冲区）：<strong>channel将数据写入Buffer</strong>，然后从Buffer中读取数据，包括int、Long、CharBuffer等多种数据类型。</p>
+</li>
+<li><p>  <strong>channel</strong>：通过channel进行数据的读写</p>
+</li>
+<li><p>  <strong>selector</strong>（多路复用器）：<strong>selector会轮询channel</strong>，如果某个channel中发生了数据请求，selector就会将通过SelectionKey会哦去有数据请求的channel，进行IO操作。一个Selector（一个线程）可以轮询上千万个channel，也就是客户端可以接入的数量激增。</p>
+</li>
+<li><p>  通过一个线程轮询大量的channel，每次获取一批有事件的channel，然后<strong>对每个请求启动一个线程</strong>进行处理，并设置一个线程池，当线程处理完毕以后，就回收线程，就不会像BIO需要一直维持为每个客户端创建的<strong>Socket+线程</strong>。</p>
+</li>
+</ul>
+<p>*</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2020/4/7/17153ff2daf38c34~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h4 id="3、AIO（异步非阻塞IO）"><a href="#3、AIO（异步非阻塞IO）" class="headerlink" title="3、AIO（异步非阻塞IO）"></a>3、AIO（异步非阻塞IO）</h4><ul>
+<li><p>  基于Proactor模型，每个连接发送的请求，都会绑定一个Buffer，然后<strong>通知操作系统异步的完成读操作</strong>，此时程序可以去干别的事，操作系统完成数据的读取之后，就会回调接口，将读出的数据给你。</p>
+</li>
+<li><p>  将数据进行处理，接着将结果返回</p>
+</li>
+<li><p>  写数据的时候也是<strong>给操作系统一个buffer</strong>，让操作系统获取数据完成写操作。</p>
+</li>
+</ul>
+<h2 id="Netty架构"><a href="#Netty架构" class="headerlink" title="Netty架构"></a>Netty架构</h2><p>在 <code>Netty</code> 的官网中，给出了一张图，图片如下：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3f5db436d44a47c58cc97e292cfdb4bc~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>上图摘自 <a href="https://link.juejin.cn/?target=https://netty.io/" title="Netty 官网首页">Netty 官网首页</a>。</p>
+<p>这就是 Netty 的模块划分图，可以清晰的看出，一共分为三个模块：</p>
+<ul>
+<li><p>  <code>Core 核心层</code>；</p>
+</li>
+<li><p>  <code>Protocol Support 协议支持层</code>；</p>
+</li>
+<li><p>  <code>Transport Services 传输服务层</code>。</p>
+</li>
+</ul>
+<p>可以看出，Netty 的模块设计具备较高的<strong>通用性和可扩展性</strong>。</p>
+<h3 id="1-Core-核心层"><a href="#1-Core-核心层" class="headerlink" title="1. Core 核心层"></a>1. Core 核心层</h3><p><code>Core 核心层</code>包含了 Netty 最为核心的功能，提供了底层网络通信的通用抽象和实现，包括可<strong>扩展的事件模型、通用的通信 API、支持零拷贝的 ByteBuf 等</strong>。</p>
+<h3 id="2-Protocol-Support-协议支持层"><a href="#2-Protocol-Support-协议支持层" class="headerlink" title="2. Protocol Support 协议支持层"></a>2. Protocol Support 协议支持层</h3><p>协议支持层基本上覆盖了主流协议的编解码实现，如 <code>HTTP、SSL、Protobuf、压缩、大文件传输、WebSocket、文本、二进制</code>等主流协议，此外 Netty 还支持自定义应用层协议。</p>
+<p>Netty 丰富的协议支持降低了用户的开发成本，基于 Netty 我们可以快速开发 HTTP、WebSocket 等服务。</p>
+<h3 id="3-Transport-Service-传输服务层"><a href="#3-Transport-Service-传输服务层" class="headerlink" title="3. Transport Service 传输服务层"></a>3. Transport Service 传输服务层</h3><p>传输服务层提供了网络传输能力的定义和实现方法。它支持 Socket、HTTP 隧道、虚拟机管道等传输方式。</p>
+<p>Netty 对 TCP、UDP 等数据传输做了抽象和封装，用户可以更聚焦在业务逻辑实现上，而不必关系底层数据传输的细节。</p>
+<h2 id="二、Netty-逻辑架构"><a href="#二、Netty-逻辑架构" class="headerlink" title="二、Netty 逻辑架构"></a>二、Netty 逻辑架构</h2><p>下图是 Netty 的逻辑处理架构。Netty 的逻辑处理架构为典型网络分层架构设计，共分为<code>网络通信层、事件调度层、服务编排层</code>，每一层各司其职。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3f8cfaef5caf4855b1fcf59d3f769565~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h3 id="1-网络通信层"><a href="#1-网络通信层" class="headerlink" title="1. 网络通信层"></a>1. 网络通信层</h3><p><strong>网络通信层的职责是执行网络 I/O 的操作。它支持多种网络协议和 I/O 模型的连接操作。当网络数据读取到内核缓冲区后，会触发各种网络事件，这些网络事件会分发给事件调度层进行处理</strong>。</p>
+<p>网络事件有连接事件、读事件、写事件等。</p>
+<p>网络通信层的<strong>核心组件</strong>包含 <strong>BootStrap、ServerBootStrap、Channel</strong> 三个组件。</p>
+<ul>
+<li>  <strong>BootStrap &amp; ServerBootStrap</strong></li>
+</ul>
+<p><code>Bootstrap</code> 是“引导”的意思，它主要负责整个 Netty 程序的启动、初始化、服务器连接等过程，它相当于一条主线，串联了 Netty 的其他核心组件。</p>
+<p>Netty 中的引导器共分为两种类型：一个为<strong>用于客户端引导的 Bootstrap</strong>，另一个为<strong>用于服务端引导的 ServerBootStrap</strong>，它们都继承自抽象类 <code>AbstractBootstrap</code>。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/833253fcd11c4f3f8bc8cf8f7aa02deb~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p><code>Bootstrap</code> 和 <code>ServerBootStrap</code> 十分相似，两者非常重要的区别在于 <code>Bootstrap</code> 可用于连接远端服务器，只绑定一个 <code>EventLoopGroup</code>。而 <code>ServerBootStrap</code> 则用于服务端启动绑定本地端口，会绑定两个 <code>EventLoopGroup</code>，这两个 EventLoopGroup 通常称为 Boss 和 Worker。</p>
+<p>ServerBootStrap 中的 Boss 和 Worker 是什么角色呢？它们之间又是什么关系？这里的 Boss 和 Worker 可以理解为“老板”和“员工”的关系。每个服务器中都会有一个 Boss，也会有一群做事情的 Worker。Boss 会不停地接收新的连接，然后将连接分配给一个个 Worker 处理连接。</p>
+<p><code>Boss</code> 对应 <code>Reactor</code> 模型中的 <code>MainReactor</code>，<code>Worker</code> 对应 <code>Reactor</code> 模型的 <code>SubReactor</code>。</p>
+<p>这里放一下 <code>Reactor</code> 的整体流程图。来源于：<a href="https://link.juejin.cn/?target=https://gee.cs.oswego.edu/dl/cpjslides/nio.pdf" title="gee.cs.oswego.edu/dl/cpjslide…">gee.cs.oswego.edu/dl/cpjslide…</a></p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/731e45eadd614f73a6909552e77dd33d~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>总结来说就是客户端使用 <code>Bootstrap</code> 引导类，服务端使用 <code>ServerBootStrap</code> 引导类。</p>
+<p>有了 Bootstrap 组件，我们可以更加方便地配置和启动 Netty 应用程序，它是整个 Netty 的入口，串接了 Netty 所有核心组件的初始化工作。</p>
+<ul>
+<li>  <strong>Channel</strong></li>
+</ul>
+<p><code>Channel</code> 的字面意思是“通道”，它是网络通信的载体。</p>
+<p><code>Channel</code> 提供了基本的 API 用于网络 I/O 操作，如 <code>register、bind、connect、read、write、flush</code> 等。</p>
+<p>Netty 自己实现的 Channel 是以 JDK NIO Channel 为基础的，相比较于 JDK NIO，Netty 的 Channel 提供了更高层次的抽象，同时屏蔽了底层 Socket 的复杂性，赋予了 Channel 更加强大的功能，你在使用 Netty 时基本不需要再与 Java Socket 类直接打交道。</p>
+<p>下图是 Channel 家族的图谱。<code>AbstractChannel</code> 是整个家族的基类，派生出 <code>AbstractNioChannel、AbstractOioChannel</code>、，每一种都代表了不同的 I/O 模型和协议类型。常用的 Channel 实现类有：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/81226d36b08b43bea0a42d8baf8babfc~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<ul>
+<li><p>  NioServerSocketChannel 异步 TCP 服务端。</p>
+</li>
+<li><p>  NioSocketChannel 异步 TCP 客户端。</p>
+</li>
+<li><p>  OioServerSocketChannel 同步 TCP 服务端。</p>
+</li>
+<li><p>  OioSocketChannel 同步 TCP 客户端。</p>
+</li>
+<li><p>  NioDatagramChannel 异步 UDP 连接。</p>
+</li>
+<li><p>  OioDatagramChannel 同步 UDP 连接。</p>
+</li>
+</ul>
+<p>注意：</p>
+<ul>
+<li><p>  Nio 为前缀的，代表使用的是 NIO 模型，所以是异步的。</p>
+</li>
+<li><p>  Oio 为前缀的，代表使用的是 BIO 模型，所以是同步的。</p>
+</li>
+</ul>
+<p>Channel 会有多种状态，如<strong>连接建立、连接注册、数据读写、连接销毁</strong>等。</p>
+<p>常见的状态对应事件如下：</p>
+<table>
+<thead>
+<tr>
+<th>事件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>channelRegistered</td>
+<td>Channel 创建后被注册到 EventLoop 上</td>
+</tr>
+<tr>
+<td>channelUnregistered</td>
+<td>Channel 创建后未注册或者从 EventLoop 取消注册</td>
+</tr>
+<tr>
+<td>channelActive</td>
+<td>Channel 处于就绪状态，可以被读写</td>
+</tr>
+<tr>
+<td>channelInactive</td>
+<td>Channel 处于非就绪状态</td>
+</tr>
+<tr>
+<td>channelRead</td>
+<td>Channel 可以从远端读取到数据</td>
+</tr>
+<tr>
+<td>channelReadComplete</td>
+<td>Channel 读取数据完成</td>
+</tr>
+</tbody></table>
+<p>总结一下：</p>
+<ul>
+<li><p>  BootStrap 和 ServerBootStrap 分别负责客户端和服务端的启动，它们是非常强大的辅助工具类，串联了 Netty 的系列核心组件；</p>
+</li>
+<li><p>  Channel 是网络通信的载体，提供了与底层 Socket 交互的能力。</p>
+</li>
+</ul>
+<h3 id="2-事件调度层"><a href="#2-事件调度层" class="headerlink" title="2. 事件调度层"></a>2. 事件调度层</h3><p><strong>事件调度层的职责是通过 Reactor 线程模型对各类事件进行聚合处理，通过 Selector 主循环线程集成多种事件（ I/O 事件、信号事件、定时事件等），实际的业务处理逻辑是交由服务编排层中相关的 Handler 完成</strong>。</p>
+<p>事件调度层的<strong>核心组件</strong>包括 <strong>EventLoopGroup、EventLoop</strong>。</p>
+<ul>
+<li>  <strong>EventLoopGroup &amp; EventLoop</strong></li>
+</ul>
+<p>EventLoopGroup 本质是一个线程池，主要负责接收 I/O 请求，并分配线程执行处理请求。</p>
+<p>EventLoopGroup 类图如下：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f171c5963b064ee48424931080803266~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>我们发现它继承了 Executor 类，可以证明它是一个线程池。</p>
+<p>那这就说明，由它管理的一个个 EventLoop，就是一个个线程，由 EventLoopGroup 负责分配 EventLoop 进行处理事件。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1a4e4c4bf9654c53a8ab2502664aac93~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>从上图中，我们可以总结出 EventLoopGroup、EventLoop、Channel 的几点关系。</p>
+<ol>
+<li><p> 一个 EventLoopGroup 往往包含一个或者多个 EventLoop。EventLoop 用于处理 Channel 生命周期内的所有 I/O 事件，如 accept、connect、read、write 等 I/O 事件。</p>
+</li>
+<li><p> EventLoop 同一时间会与一个线程绑定，每个 EventLoop 负责处理多个 Channel。</p>
+</li>
+<li><p> 每新建一个 Channel，EventLoopGroup 会选择一个 EventLoop 与其绑定。该 Channel 在生命周期内都可以对 EventLoop 进行多次绑定和解绑。</p>
+</li>
+</ol>
+<p>下图是 EventLoopGroup 的家族图谱。可以看出 Netty 提供了 EventLoopGroup 的多种实现，而且 EventLoop 则是 EventLoopGroup 的子接口，所以也可以把 EventLoop 理解为 EventLoopGroup，但是它只包含一个 EventLoop 。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/50f56d8b8ab04768a6a92f6d1611f1b8~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p><code>EventLoopGroup</code> 的实现类是 <code>NioEventLoopGroup</code>，<code>NioEventLoopGroup</code> 也是 Netty 中最被推荐使用的线程模型。</p>
+<p>NioEventLoopGroup 继承于 MultithreadEventLoopGroup，是基于 NIO 模型开发的，可以把 NioEventLoopGroup 理解为一个线程池，每个线程负责处理多个 Channel，而同一个 Channel 只会对应一个线程。</p>
+<p>EventLoopGroup 是 Netty 的核心处理引擎，那么 EventLoopGroup 和 Reactor 线程模型到底是什么关系呢？</p>
+<p>其实 EventLoopGroup 是 Netty Reactor 线程模型的具体实现方式，Netty 通过创建不同的 EventLoopGroup 参数配置，就可以支持 Reactor 的三种线程模型：</p>
+<ol>
+<li><p> <strong>单线程模型</strong>：EventLoopGroup 只包含<code>一个 EventLoop</code>，Boss 和 Worker 使用同一个EventLoopGroup；</p>
+</li>
+<li><p> <strong>多线程模型</strong>：EventLoopGroup 包含<code>多个 EventLoop</code>，Boss 和 Worker 使用同一个EventLoopGroup；</p>
+</li>
+<li><p> <strong>主从多线程模型</strong>：EventLoopGroup 包含多个 EventLoop，Boss 是主 Reactor，Worker 是从 Reactor，它们分别使用不同的 EventLoopGroup，主 Reactor 负责新的网络连接 Channel 创建，然后把 Channel 注册到从 Reactor。</p>
+</li>
+</ol>
+<h3 id="3-服务编排层"><a href="#3-服务编排层" class="headerlink" title="3. 服务编排层"></a>3. 服务编排层</h3><p><strong>服务编排层的职责是负责组装各类服务，它是 Netty 的核心处理链，用以实现网络事件的动态编排和有序传播</strong>。</p>
+<p>服务编排层的<strong>核心组件</strong>包括 <strong>ChannelPipeline</strong>、<strong>ChannelHandler、ChannelHandlerContext</strong>。</p>
+<ul>
+<li>  <strong>ChannelPipeline</strong></li>
+</ul>
+<p><code>ChannelPipeline</code> 是 Netty 的核心编排组件，<strong>负责组装各种 ChannelHandler</strong>，实际数据的编解码以及加工处理操作都是由 ChannelHandler 完成的。</p>
+<p>ChannelPipeline 可以理解为<strong>ChannelHandler 的实例列表</strong>——内部通过双向链表将不同的 ChannelHandler 链接在一起。当 I/O 读写事件触发时，ChannelPipeline 会依次调用 ChannelHandler 列表对 Channel 的数据进行拦截和处理。</p>
+<p><code>ChannelPipeline 是线程安全的</code>，因为每一个新的 Channel 都会对应绑定一个新的 ChannelPipeline。一个 ChannelPipeline 关联一个 EventLoop，一个 EventLoop 仅会绑定一个线程。</p>
+<p>ChannelPipeline、ChannelHandler 都是高度可定制的组件。开发者可以通过这两个核心组件掌握对 Channel 数据操作的控制权。下面我们看一下 ChannelPipeline 的结构图：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3a386eede45142f79075eed075a3447c~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>从上图可以看出，ChannelPipeline 中包含入站 ChannelInboundHandler 和出站 ChannelOutboundHandler 两种处理器，我们结合客户端和服务端的数据收发流程来理解 Netty 的这两个概念。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/94ef10fa0234401196cbe8f16abfd40c~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>客户端和服务端都有各自的 ChannelPipeline。以客户端为例，数据从客户端发向服务端，该过程称为<strong>出站</strong>，反之则称为<strong>入站</strong>。数据入站会由一系列 InBoundHandler 处理，然后再以相反方向的 OutBoundHandler 处理后完成出站。</p>
+<p>我们经常使用的编码 Encoder 是出站操作，解码 Decoder 是入站操作。服务端接收到客户端数据后，需要先经过 Decoder 入站处理后，再通过 Encoder 出站通知客户端。所以客户端和服务端一次完整的请求应答过程可以分为三个步骤：客户端出站（请求数据）、服务端入站（解析数据并执行业务逻辑）、服务端出站（响应结果）。</p>
+<ul>
+<li>  <strong>ChannelHandler &amp; ChannelHandlerContext</strong></li>
+</ul>
+<p>下图描述了 Channel 与 ChannelPipeline 的关系，从图中可以看出，每创建一个 Channel 都会绑定一个新的 ChannelPipeline，ChannelPipeline 中每加入一个 ChannelHandler 都会绑定一个 ChannelHandlerContext。</p>
+<p>由此可见，ChannelPipeline、ChannelHandlerContext、ChannelHandler 三个组件的关系是密切相关的。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/abccbee47d484fd8a066690aaa39d4e7~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>ChannelHandlerContext 用于保存 ChannelHandler 上下文，通过 ChannelHandlerContext 我们可以知道 ChannelPipeline 和 ChannelHandler 的关联关系。</p>
+<p>ChannelHandlerContext 可以实现 ChannelHandler 之间的交互，ChannelHandlerContext 包含了 ChannelHandler 生命周期的所有事件，如 connect、bind、read、flush、write、close 等。</p>
+<p>此外，你可以试想这样一个场景，如果每个 ChannelHandler 都有一些通用的逻辑需要实现，没有 ChannelHandlerContext 这层模型抽象，你是不是需要写很多相同的代码呢？</p>
+<h2 id="三、组件关系梳理"><a href="#三、组件关系梳理" class="headerlink" title="三、组件关系梳理"></a>三、组件关系梳理</h2><p>Netty 组件交互流程图：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f001f6025ba3460c83710d0b0b8f9ccd~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<ul>
+<li><p>  服务端启动初始化时有 <code>Boss EventLoopGroup</code> 和 <code>Worker EventLoopGroup</code> 两个组件，其中 Boss 负责监听网络连接事件。当有新的网络连接事件到达时，则将 Channel 注册到 Worker EventLoopGroup。</p>
+</li>
+<li><p>  Worker EventLoopGroup 会被分配一个 EventLoop 负责处理该 Channel 的读写事件。每个 EventLoop 都是单线程的，通过 Selector 进行事件循环。</p>
+</li>
+<li><p>  当客户端发起 I/O 读写事件时，服务端 EventLoop 会进行数据的读取，然后通过 Pipeline 触发各种监听器进行数据的加工处理。</p>
+</li>
+<li><p>  客户端数据会被传递到 ChannelPipeline 的第一个 ChannelInboundHandler 中，数据处理完成后，将加工完成的数据传递给下一个 ChannelInboundHandler。</p>
+</li>
+<li><p>  当数据写回客户端时，会将处理结果在 ChannelPipeline 的 ChannelOutboundHandler 中传播，最后到达客户端。</p>
+</li>
+</ul>
+<h2 id="四、Netty-源码结构"><a href="#四、Netty-源码结构" class="headerlink" title="四、Netty 源码结构"></a>四、Netty 源码结构</h2><p><a href="https://link.juejin.cn/?target=https://github.com/netty/netty" title="Netty 源码">Netty 源码</a></p>
+<p>Netty 源码结构和 Netty 的模块划分大体相符合：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e06c191b201542229539f50fd4bc9de3~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h4 id="Core-核心层模块"><a href="#Core-核心层模块" class="headerlink" title="Core 核心层模块"></a>Core 核心层模块</h4><p><strong>netty-common</strong>模块是 Netty 的核心基础包，提供了丰富的工具类，其他模块都需要依赖它。在 common 模块中，常用的包括<strong>通用工具类</strong>和<strong>自定义并发包</strong>。</p>
+<ul>
+<li><p>  通用工具类：比如定时器工具 TimerTask、时间轮 HashedWheelTimer 等。</p>
+</li>
+<li><p>  自定义并发包：比如异步模型 Future &amp; Promise、相比 JDK 增强的 FastThreadLocal 等。</p>
+</li>
+</ul>
+<p>在 <strong>netty-buffer 模块中</strong>Netty自己实现了的一个更加完备的 <strong>ByteBuf 工具类</strong>，用于网络通信中的数据载体。</p>
+<p>由于人性化的 Buffer API 设计，它已经成为 Java ByteBuffer 的完美替代品。ByteBuf 的动态性设计不仅解决了 ByteBuffer 长度固定造成的内存浪费问题，而且更安全地更改了 Buffer 的容量。此外 Netty 针对 ByteBuf 做了很多优化，例如缓存池化、减少数据拷贝的 CompositeByteBuf 等。</p>
+<p><strong>netty-resover</strong>模块主要提供了一些有关<strong>基础设施</strong>的解析工具，包括 IP Address、Hostname、DNS 等。</p>
+<h4 id="Protocol-Support-协议支持层模块"><a href="#Protocol-Support-协议支持层模块" class="headerlink" title="Protocol Support 协议支持层模块"></a>Protocol Support 协议支持层模块</h4><p><strong>netty-codec</strong>模块主要负责编解码工作，通过编解码实现原始字节数据与业务实体对象之间的相互转化。</p>
+<p>如下图所示，Netty 支持了大多数业界主流协议的编解码器，如 HTTP、HTTP2、Redis、XML 等，为开发者节省了大量的精力。此外该模块提供了抽象的编解码类 ByteToMessageDecoder 和 MessageToByteEncoder，通过继承这两个类我们可以轻松实现自定义的编解码逻辑。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1223bbcec83e462487adf0fa213b9238~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p><strong>netty-handler</strong>模块主要负责数据处理工作。Netty 中关于数据处理的部分，本质上是一串有序 handler 的集合。netty-handler 模块提供了开箱即用的 ChannelHandler 实现类，例如日志、IP 过滤、流量整形等，如果你需要这些功能，仅需在 pipeline 中加入相应的 ChannelHandler 即可。</p>
+<h4 id="Transport-Service-传输服务层模块"><a href="#Transport-Service-传输服务层模块" class="headerlink" title="Transport Service 传输服务层模块"></a>Transport Service 传输服务层模块</h4><p>netty-transport 模块可以说是 Netty 提供数据<strong>处理和传输的核心模块</strong>。该模块提供了很多非常重要的接口，如 Bootstrap、Channel、ChannelHandler、EventLoop、EventLoopGroup、ChannelPipeline 等。</p>
+<p>其中 Bootstrap 负责客户端或服务端的启动工作，包括创建、初始化 Channel 等；EventLoop 负责向注册的 Channel 发起 I/O 读写操作；ChannelPipeline 负责 ChannelHandler 的有序编排，这些组件在介绍 Netty 逻辑架构的时候都有所涉及。</p>
+]]></content>
+  </entry>
+  <entry>
+    <title></title>
+    <url>/2022/10/29/netty/</url>
+    <content><![CDATA[<h1 id="netty"><a href="#netty" class="headerlink" title="netty"></a>netty</h1><p><a href="https://www.wolai.com/9DVKXTsrxmqmw5gpWcMvkL" title="netty的一些概念（一）">netty的一些概念（一）</a></p>
+<p><a href="https://www.wolai.com/ivN7qMxvGesvGNGCZEBfHS" title="netty的一些概念（二）">netty的一些概念（二）</a></p>
+<p><a href="https://www.wolai.com/bzLrQrb5q8pbZx2tkkXgGs" title="ByteBuffer">ByteBuffer</a></p>
+<p><a href="https://www.wolai.com/dmwZrjR6Xfi4174g8WYMvJ" title="EventLoopGroup">EventLoopGroup</a></p>
+<p><a href="https://www.wolai.com/x12MANAkkuPHqiYFgCfg5B" title="Channel">Channel</a></p>
+<p><a href="https://www.wolai.com/ut7UK7uRjbhHutS2QNGtHr" title="Pipeline和ChannelHandler">Pipeline和ChannelHandler</a></p>
+]]></content>
+  </entry>
+  <entry>
+    <title></title>
+    <url>/2022/10/29/Channel/</url>
+    <content><![CDATA[<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><p><a href="#channel">Channel</a></p>
+<ul>
+<li><p>  <a href="#channel%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86">Channel工作原理</a></p>
+</li>
+<li><p><a href="#channel%E6%A0%B8%E5%BF%83%E5%8A%9F%E8%83%BD">Channel核心功能</a></p>
+<ul>
+<li><p>  <a href="#%E7%BD%91%E7%BB%9Cio%E6%93%8D%E4%BD%9C">网络I/O操作</a></p>
+</li>
+<li><p>  <a href="#%E5%85%B6%E4%BB%96">其他</a></p>
+</li>
+<li><p>  <a href="#channel%E4%B8%AD%E7%9A%84unsafe">Channel中的Unsafe</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="Channel"><a href="#Channel" class="headerlink" title="Channel"></a>Channel</h1><p>提起Channel，我们并不陌生，在JDK NIO中也有Channel通道的概念。Channel是网络通信的载体，提供了基本的用于I/O操作的API，如：register、bind、connect、read、write、flush等。</p>
+<p>Netty的Channel是在JDK的NIO Channel基础上进行封装的，提供了更高层次的抽象，同时屏蔽了底层Socket的复杂性，赋予了Channel更加强大的功能。</p>
+<p>Netty为什么不使用JDK NIO原生的Channel呢？主要是基于以下几个原因：</p>
+<ul>
+<li><p>  JDK中的SocketChannel和ServerSocketChannel没有统一的Channel接口供业务开发者使用，对于用户而言，没有统一的操作视图，使用起来并不方便</p>
+</li>
+<li><p>  JDK中的SocketChannel和ServerSocketChannel的主要职责是网络I/O操作，由于它们是SPI类接口，由具体的虚拟机厂家来提供，所以通过继承SPI功能类来扩展其功能的难度很大；直接实现SocketChannel和ServerSocketChannel，其工作量和重新开发一个新的Channel功能更类是差不多的</p>
+</li>
+<li><p>  Netty的Channel需要能够跟Netty的整体架构融合在一起，例如I/O模型、基于ChannelPipeLine的定制模型，以及基于元数据描述配置化的TCP参数等，这些JDK的SocketChannel和ServerSocketChannel都没有提供，需要重新进行封装</p>
+</li>
+<li><p>  自定义的Channel，功能实现更加灵活</p>
+</li>
+</ul>
+<p>基于以上原因，Netty自行封装了Channel接口，来代替JDK NIO原生的Channel，使得Channel能够更好地适配Netty整体框架，并且其扩展性也更强。</p>
+<p>在Netty中，提供了多种不同的Channel实现，主要的几种实现如下：</p>
+<ul>
+<li><p>  FileChannel：用于文件操作</p>
+</li>
+<li><p>  SelectableChannel：用于网络连接，根据网络协议不同，可以分为：</p>
+</li>
+<li><p>*   ServerSocketChannel和SocketChannle：用于TCP协议的数据读写，分别对应服务端和客户端的通道</p>
+<ul>
+<li>  DatagramChannel：用于UDP协议的数据读写</li>
+</ul>
+</li>
+</ul>
+<h2 id="Channel工作原理"><a href="#Channel工作原理" class="headerlink" title="Channel工作原理"></a>Channel工作原理</h2><ul>
+<li><p>  一旦有客户端成功与服务端建立连接，将新建一个Channel与该客户端进行绑定</p>
+</li>
+<li><p>  Channel从线程组NioEventloopGroup中获取一个NioEventloop，并注册到该NioEventloop，后续该Channel的生命周期内都与该NioEventloop绑定在一起</p>
+</li>
+<li><p>  Channel同客户端进行网络连接、关闭和读写，生成对应的even事件，由Selector轮询到后，交给Worker线程组中的调度线程去执行</p>
+</li>
+</ul>
+<p>在不同的生命周期阶段，Channel会有不同的状态，并且能够在不同的状态之间进行流转和切换。</p>
+<p>Channel的状态有四种：</p>
+<ul>
+<li><p>  ChannelUnregistered：已创建但还未被注册到监听器中</p>
+</li>
+<li><p>  ChannelRegistered ：已注册到监听器EventLoop中</p>
+</li>
+<li><p>  ChannelActive ：连接完成处于活跃状态，此时可以接收和发送数据</p>
+</li>
+<li><p>  ChannelInactive ：非活跃状态，代表连接未建立或者已断开</p>
+</li>
+</ul>
+<h2 id="Channel核心功能"><a href="#Channel核心功能" class="headerlink" title="Channel核心功能"></a>Channel核心功能</h2><p>我们先来看一下Channel接口的顶层定义：</p>
+<p>public interface Channel extends AttributeMap, ChannelOutboundInvoker, Comparable&lt;Channel&gt; {</p>
+<p>ChannelId id();</p>
+<p>EventLoop eventLoop();</p>
+<p>Channel parent();</p>
+<p>ChannelConfig config();</p>
+<p>boolean isOpen();</p>
+<p>boolean isRegistered();</p>
+<p>boolean isActive();</p>
+<p>ChannelMetadata metadata();</p>
+<p>SocketAddress localAddress();</p>
+<p>SocketAddress remoteAddress();</p>
+<p>ChannelFuture closeFuture();</p>
+<p>boolean isWritable();</p>
+<p>long bytesBeforeUnwritable();</p>
+<p>long bytesBeforeWritable();</p>
+<p>Channel.Unsafe unsafe();</p>
+<p>ChannelPipeline pipeline();</p>
+<p>ByteBufAllocator alloc();</p>
+<p>Channel read();</p>
+<p>Channel flush();</p>
+<p>public interface Unsafe {</p>
+<p>Handle recvBufAllocHandle();</p>
+<p>SocketAddress localAddress();</p>
+<p>SocketAddress remoteAddress();</p>
+<p>void register(EventLoop var1, ChannelPromise var2);</p>
+<p>void bind(SocketAddress var1, ChannelPromise var2);</p>
+<p>void connect(SocketAddress var1, SocketAddress var2, ChannelPromise var3);</p>
+<p>void disconnect(ChannelPromise var1);</p>
+<p>void close(ChannelPromise var1);</p>
+<p>void closeForcibly();</p>
+<p>void deregister(ChannelPromise var1);</p>
+<p>void beginRead();</p>
+<p>void write(Object var1, ChannelPromise var2);</p>
+<p>void flush();</p>
+<p>ChannelPromise voidPromise();</p>
+<p>ChannelOutboundBuffer outboundBuffer();</p>
+<p>}</p>
+<p>}</p>
+<p>可以将Channel的功能大概分为两大类：</p>
+<ul>
+<li><p>  网络I/O操作：完成网络I/O的读写、连接关闭等操作</p>
+</li>
+<li><p>  获取Channel通道元数据信息</p>
+</li>
+</ul>
+<h3 id="网络I-O操作"><a href="#网络I-O操作" class="headerlink" title="网络I/O操作"></a>网络I/O操作</h3><p>针对网络I/O相关的方法如下：</p>
+<p>boolean isOpen();</p>
+<p>boolean isRegistered();</p>
+<p>boolean isActive();</p>
+<p>ChannelFuture closeFuture();</p>
+<p>boolean isWritable();</p>
+<p>long bytesBeforeUnwritable();</p>
+<p>long bytesBeforeWritable();</p>
+<p>Channel read();</p>
+<p>Channel flush();</p>
+<p>复制代码</p>
+<p>对这些方法的介绍如下：</p>
+<p>判断Channel通道状态：</p>
+<ul>
+<li><p>  isOpen()：判断当前Channel是否已经打开</p>
+</li>
+<li><p>  isRegistered()：判断当Channel是否已经注册到NioEventLoop上</p>
+</li>
+<li><p>  isActive()：判断当前Channel是否已经处于激活状态</p>
+</li>
+</ul>
+<p>操作：</p>
+<ul>
+<li><p>  read()：从当前的Channel中读取数据到第一个inbound缓冲区中，如果数据被成功读取，触发ChannelHandler.channelRead(ChannelHandlerContext, Object)事件，读取操作API调用完成之后，紧接着会触发ChannelHandler.channelReadComplete(ChannelHandlerContext)事件，这样业务的ChannelHandler可以决定是否需要继续读取数据。如果已经有读操作请求被挂起，则后续的读操作会被忽略。</p>
+</li>
+<li><p>  flush()：将写入的数据刷入Channel</p>
+</li>
+</ul>
+<h3 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h3><p>ChannelId id();</p>
+<p>EventLoop eventLoop();</p>
+<p>Channel parent();</p>
+<p>ChannelConfig config();</p>
+<p>ChannelMetadata metadata();</p>
+<p>SocketAddress localAddress();</p>
+<p>SocketAddress remoteAddress();</p>
+<p>ChannelPipeline pipeline();</p>
+<p>复制代码</p>
+<p>相关API介绍如下：</p>
+<ul>
+<li><p>  id()：在客户端连接建立后，生成Channel通道的时候会为每一个Channel分配一个唯一的ID，该ID可能的生成策略有：</p>
+</li>
+<li><p>*   机器的MAC地址（EUI-48或者EUI-64）等可以代表全局唯一的信息</p>
+<ul>
+<li><p>  当前的进程ID</p>
+</li>
+<li><p>  当前系统时间的毫秒</p>
+</li>
+<li><p>  当前系统时间纳秒数</p>
+</li>
+<li><p>  32位的随机整型数</p>
+</li>
+<li><p>  32位自增的序列数</p>
+</li>
+</ul>
+</li>
+<li><p>  eventLoop()：在上面说过Channel建立后会与EventLoopGroop中分配的一个EventLoop线程绑定，该方法就可以获取到Channel绑定的EventLoop。EventLoop本质上就是处理网络I/O读写事件的Reactor线程。在Netty中，它不仅用来处理网络事件，也可以用来执行定时任务和用户自定义NioTask任务等。</p>
+</li>
+<li><p>  parent()：返回该Channel的父Channel。对于服务端的Channel而言，它的父Channel为空；对于客户端Channel而言，它的父Channel就是创建它的ServerSocketChannel</p>
+</li>
+<li><p>  config()：获取当前Channel的配置信息，例如：CONNECT_TIMEOUT_MILLIS</p>
+</li>
+<li><p>  metadata()：获取当前Channel的元数据描述信息，包括TCP参数配置等</p>
+</li>
+<li><p>  localAddress()：获取当前Channel的本地绑定地址</p>
+</li>
+<li><p>  remoteAddress()：获取当前Channel通信的远程Socket地址</p>
+</li>
+<li><p>  pipeline()：通过pipeline()方法，可以获取到Channel的ChannelPipeline对象，ChannelPipeline也是Netty的核心组件，它可以理解为是ChannelHandler的容器，用于处理Channel的所有事件</p>
+</li>
+</ul>
+<p>总的来说，Channel顶层接口只定义了一些基础的核心能力，在开发过程中，比较常用的NioServerSocketChannel和NioSocketChannel这两个服务端和客户端的类均继承于：AbstractChannel。Channel的初始化核心操作都是交由该父类来完成的，并且扩充了很多Channel接口中的能力。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4961706b190540fc80737925e4bda4aa~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>在该类中维护了Channel的父Channel，ID，pipeline等重要组件，并且通过构造方法来完成初始化。通过变量定义可以看出，AbstractChannel聚合了所有Channel使用到的能力对象，由AbstractChannel提供初始化和统一的封装，如果功能和子类强相关，则定义为抽象方法由子类来实现。</p>
+<h3 id="Channel中的Unsafe"><a href="#Channel中的Unsafe" class="headerlink" title="Channel中的Unsafe"></a>Channel中的Unsafe</h3><p>我们在Channel接口中可以看到内部定义了一个Unsafe类，并且里面定义了很多与Channel功能很像的方法，那这个类到底有什么用呢？</p>
+<p>Channel接口中Unsafe接口的定义：</p>
+<p>public interface Unsafe {</p>
+<p>Handle recvBufAllocHandle();</p>
+<p>SocketAddress localAddress();</p>
+<p>SocketAddress remoteAddress();</p>
+<p>void register(EventLoop var1, ChannelPromise var2);</p>
+<p>void bind(SocketAddress var1, ChannelPromise var2);</p>
+<p>void connect(SocketAddress var1, SocketAddress var2, ChannelPromise var3);</p>
+<p>void disconnect(ChannelPromise var1);</p>
+<p>void close(ChannelPromise var1);</p>
+<p>void closeForcibly();</p>
+<p>void deregister(ChannelPromise var1);</p>
+<p>void beginRead();</p>
+<p>void write(Object var1, ChannelPromise var2);</p>
+<p>void flush();</p>
+<p>ChannelPromise voidPromise();</p>
+<p>ChannelOutboundBuffer outboundBuffer();</p>
+<p>}</p>
+<p>复制代码</p>
+<p>实际上Unsafe是Channel的一个辅助类，它不直接暴露给用户使用，它是Channel的一个辅助类，但是实际上Channel的网络I/O操作基本上都是由Unsafe负责实现的。</p>
+<p>Unsafe继承关系如图：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/5c177cccac324024940a3b0e535146a6~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>Unsafe中的核心方法介绍：</p>
+<ul>
+<li><p>  register()：用于将当前Unsafe对应的Channel注册到EventLoop的多路复用器上，然后调用DefaultChannelPipeLine的fireChannelRegistered方法。如果Channel被激活，则调用DefaultChannelPipeLine的fireChannelActive方法</p>
+</li>
+<li><p>  bind()：主要用于绑定指定的端口，对于服务端，用于绑定监听端口，可以设置backlog参数；对于客户端，主要用于指定客户端Channel的本地绑定Socket地址</p>
+</li>
+<li><p>  connect()：首先获取当前的连接状态进行缓存，然后发起连接操作，如果连接成功，则返回true；如果没连接上，服务端没有返回ACK应答，连接结果不确定，返回false；连接失败的话直接抛出I/O异常</p>
+</li>
+<li><p>  finishConnect方法()：客户端接收到服务端的TCP握手应答消息，通过SocketChannel的finishConnect方法对连接结果进行判断</p>
+</li>
+<li><p>  disconnect()：用于客户端或者服务器主动关闭连接</p>
+</li>
+<li><p>  close()：在链路关闭之前需要先判断是否处于刷新状态，如果处于刷新状态，说明还有消息尚未发送出去，需要等到所有消息发送完成后再关闭链路，因此将关闭操作封装成Runnable稍后再执行</p>
+</li>
+<li><p>  write()：将消息添加到环形发送数组中，并不是真正的写Channel，真正的写入需要调用flush方法</p>
+</li>
+<li><p>  flush()方法：将发送缓冲区中待发送的消息全部写入Channel中，并发送给通信方</p>
+</li>
+</ul>
+]]></content>
+  </entry>
+  <entry>
+    <title></title>
+    <url>/2022/10/29/Pipeline%E5%92%8CChannelHandler/</url>
+    <content><![CDATA[<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><p><a href="#pipeline%E5%92%8Cchannelhandler">Pipeline和ChannelHandler</a></p>
+<ul>
+<li><p><a href="#channelpipeline">ChannelPipeline</a></p>
+<ul>
+<li><p>  <a href="#%E4%BA%8B%E4%BB%B6%E5%A4%84%E7%90%86">事件处理</a></p>
+</li>
+<li><p>  <a href="#%E4%BA%8B%E4%BB%B6%E7%B1%BB%E5%9E%8B">事件类型</a></p>
+</li>
+<li><p>  <a href="#channelpipeline%E7%89%B9%E6%80%A7">ChannelPipeline特性</a></p>
+</li>
+</ul>
+</li>
+<li><p><a href="#channelhandler">ChannelHandler</a></p>
+<ul>
+<li><p>  <a href="#channelhandleradapter">ChannelHandlerAdapter</a></p>
+</li>
+<li><p>  <a href="#bytetomessagedecoder">ByteToMessageDecoder</a></p>
+</li>
+<li><p>  <a href="#messagetomessagedecoder">MessageToMessageDecoder</a></p>
+</li>
+<li><p>  <a href="#lengthfieldbasedframedecoder">LengthFieldBasedFrameDecoder</a></p>
+</li>
+<li><p>  <a href="#messagetobyteencoder">MessageToByteEncoder</a></p>
+</li>
+<li><p>  <a href="#messagetomessageencoder">MessageToMessageEncoder</a></p>
+</li>
+<li><p>  <a href="#lengthfieledprepender">LengthFieledPrepender</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="Pipeline和ChannelHandler"><a href="#Pipeline和ChannelHandler" class="headerlink" title="Pipeline和ChannelHandler"></a>Pipeline和ChannelHandler</h1><p>ChannelPipeline和ChannelHandler是Netty在进行业务处理时的重要组成组件，简单来说，ChannelHandler是进行一个业务处理的处理器，而Pipeline负责将一个个的处理器串联起来，相当于一个容器，Channel中的数据会进入Pipeline，在容器中的各个处理器中按照顺序进行流转。</p>
+<p>ChannelPipelie和ChannelHandler的关系图示：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/64979057476941388430f708ec975dd7~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>在Netty中，一个请求会创建一个Channel通道，每个Channel会绑定一个Pipeline,Pipeline是一个双向链表结构，它们是一一对应的关系。ChannelHandlerContext是ChannelHandler的上下文对象，通过该对象可以获取处理器的上下文信息，如：绑定的Channel、Pipeline等。</p>
+<p>Netty的ChannelPipeline和ChannelHandler机制类似于Servlet和Filter过滤器，这类拦截器实际上是职责链模式的一种变形，主要是为了方便事件的拦截和用户业务逻辑的定制。</p>
+<p>Netty将Channel的数据管道抽象为ChannelPileline，消息在ChannelPileline中流动和传递，ChannelPileline持有I/O事件拦截器ChannelHandler的链表，由ChannelPileline进行I/O事件拦截和处理，可以方便地通过新增和删除ChannelHandler实现不同的业务逻辑定制，不需要对已有的ChannelHandler进行修改，能够实现对修改封闭和对扩展的支持。</p>
+<h2 id="ChannelPipeline"><a href="#ChannelPipeline" class="headerlink" title="ChannelPipeline"></a>ChannelPipeline</h2><p>ChannelPipeline是ChannelHandler的容器，它负责ChannelHandler的管理和事件拦截。</p>
+<h3 id="事件处理"><a href="#事件处理" class="headerlink" title="事件处理"></a>事件处理</h3><p>ChannelPipeline事件处理的流程：</p>
+<ul>
+<li><p>  底层的SocketChannel read()方法读取ByteBuf，触发ChannelRead事件，由I/O线程NioEventLoop调用ChannelPipeline的fireChannelRead(Object msg)方法，将消息(ByteBuf)传输到ChannelPipeline中</p>
+</li>
+<li><p>  消息依次被ChannelPipeline中的处理器：(例如)HeadHandler、ChannelHandler1、ChannelHandler2….TailHandler拦截和处理，在这个过程中，任何ChannelHandler都可以中断当前的流程，结束消息的传递</p>
+</li>
+<li><p>  调用ChannelHandlerContext的write方法发送消息，消息依次经过：TailHandler、ChannelHandlerN…ChannelHandler2、ChannelHandler1、HeadHandler，最终被添加到消息发送缓冲区中等待刷新和发送，在此过程中也可以中断消息传递，例如当编码失败时，就需要中断消息传递，然后构造异常的Future返回</p>
+</li>
+</ul>
+<h3 id="事件类型"><a href="#事件类型" class="headerlink" title="事件类型"></a>事件类型</h3><p>Netty的事件类型分为inbound和outbound事件两大类。</p>
+<p><strong>inbound事件</strong></p>
+<p>inbound事件通常由I/O线程触发，例如TCP链路建立、链路关闭事件、读事件、异常通知事件等。触发Inbound事件的方法如下：</p>
+<ul>
+<li><p>  <code>ChannelHandlerContext.fireChannelRegistered()</code>：Channel注册事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireChannelActive()</code>：TCP链路建立成功，Channel激活事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireChannelRead(Object)</code>：读事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireChannelReadComplete()</code>：读操作完成通知事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.ExceptionCaught(Throwable)</code>：异常通知事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireUserEventTriggered(Object)</code>：用户自定义事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireChannelWritabilityChanged()</code>：Channel的可写状态变化通知事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.fireChannelInactive()</code>：TCP连接关闭，链路不可用通知事件</p>
+</li>
+</ul>
+<p><strong>outbound事件</strong></p>
+<p>outbound事件通常是由用户主动发起的网络I/O操作，例如用户发起的连接操作，绑定操作，消息发送等，触发outbound事件的方法如下：</p>
+<ul>
+<li><p>  <code>ChannelHandlerContext.bind(SocketAddress, ChannelPromis)</code>：绑定本地地址事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.connect(SocketAddress, SocketAddress, ChannelPromis)</code>：连接服务器事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.write(Object, ChannelPromis)</code>：发送事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.flush()</code>：刷新事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.read()</code>：读事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.disconnect(ChannelPromis)</code>：断开连接事件</p>
+</li>
+<li><p>  <code>ChannelHandlerContext.close(ChannelPromis)</code>：关闭当前Channel事件</p>
+</li>
+</ul>
+<h3 id="ChannelPipeline特性"><a href="#ChannelPipeline特性" class="headerlink" title="ChannelPipeline特性"></a>ChannelPipeline特性</h3><ul>
+<li><p>  支持运行态动态的添加或者删除ChannelHandler。例如在业务高峰期需要对系统做拥堵保护时，就可以根据当前的系统时间进行判断，如果处于业务高峰期，则动态地将系统拥堵保护ChannelHandler添加到当前的ChannelPipeline中，高峰期过后，就可以动态删除拥堵保护ChannelHandler</p>
+</li>
+<li><p>  ChannelPipeline是线程安全的。这意味着N个业务线程可以并发地操作ChannelPipeline而不存在多线程并发问题。但是ChannelHandler却不是线程安全的，这意味着尽管ChannelPipeline是线程安全的，但是用户仍然要自己保证ChannelHandler的线程安全。</p>
+</li>
+</ul>
+<h2 id="ChannelHandler"><a href="#ChannelHandler" class="headerlink" title="ChannelHandler"></a>ChannelHandler</h2><p>ChannelHandler类似于Servlet的Filter过滤器，负责对I/O事件或者I/O操作进行拦截和处理，它可以选择性地进行拦截和处理自己感兴趣的事件，也可以透传和终止事件的传递。</p>
+<p>基于ChannelHandler接口，用户可以方便地进行业务逻辑定制，例如打印日志、统一封装异常信息，性能统计和消息编解码等。</p>
+<h3 id="ChannelHandlerAdapter"><a href="#ChannelHandlerAdapter" class="headerlink" title="ChannelHandlerAdapter"></a>ChannelHandlerAdapter</h3><p>ChannelHandlerAdapter是handler的基类，它的所有接口实现都是事件透传，如果用户ChannelHandler关心某个事件，只需要覆盖ChannelHandlerAdapter对应的方法即可，对于不关心的方法，无需覆盖直接使用父类的方法，这样子类的代码就会非常简洁和清晰。</p>
+<p>在Netty中的Handler可以分为以下两大类：</p>
+<ul>
+<li><p>  <code>ChannelInboundHandler</code>：对应上文中的inbound事件处理。主要负责读事件的逻辑处理，比如，我们在一端读到一段数据，首先要解析这段数据，然后对这些数据做一系列逻辑处理，最终把响应写到对端， 在开始组装响应之前的所有的逻辑，都可以放置在 ChannelInboundHandler 里处理，它的一个最重要的方法就是 channelRead()。可以将 ChannelInboundHandler 的逻辑处理过程与 TCP 的七层协议的解析联系起来，收到的数据一层层从物理层上升到我们的应用层。</p>
+</li>
+<li><p>  <code>ChannelOutBoundHandler</code>：对应上文中的outbound事件处理。是处理写数据的逻辑，它是定义我们一端在组装完响应之后，把数据写到对端的逻辑，比如，我们封装好一个 response 对象，接下来我们有可能对这个 response 做一些其他的特殊逻辑，然后，再编码成 ByteBuf，最终写到对端，它里面最核心的一个方法就是 write()，读者可以将 ChannelOutBoundHandler 的逻辑处理过程与 TCP 的七层协议的封装过程联系起来，我们在应用层组装响应之后，通过层层协议的封装，直到最底层的物理层。</p>
+</li>
+</ul>
+<p>这两个接口都有默认的实现类，分别是：</p>
+<ul>
+<li><p>  <code>ChannelInboundHandlerAdapter</code></p>
+</li>
+<li><p>  <code>ChanneloutBoundHandlerAdapter</code></p>
+</li>
+</ul>
+<p>它们分别实现两个大类接口的所有方法，默认情况下会把读写事件传播到下一个handler。</p>
+<p>在开发中，会有一些比较常用的Netty提供的handler供我们使用，方便快速开发，例如：</p>
+<ul>
+<li><p>  <code>ByteToMessageDecoder</code></p>
+</li>
+<li><p>  <code>MessageToMessageDecoder</code></p>
+</li>
+<li><p>  <code>LengthFieledBasedFrameDecoder</code></p>
+</li>
+<li><p>  <code>MessageToByteEncoder</code></p>
+</li>
+<li><p>  <code>MessageToMessageEncoder</code></p>
+</li>
+<li><p>  <code>LengthFieledPrepender</code></p>
+</li>
+</ul>
+<p>下面我们会一一介绍它们各自的用途。</p>
+<h3 id="ByteToMessageDecoder"><a href="#ByteToMessageDecoder" class="headerlink" title="ByteToMessageDecoder"></a>ByteToMessageDecoder</h3><p>利用NIO进行网络编程时，往往需要将读取到的字节数组或者字节缓冲区解码为业务可以使用的POJO对象，为了方便业务将ByteBuf解码为业务POJO对象，Netty提供了ByteToMessageDecoder抽象工具解码类。</p>
+<p>用户解码器handler继承ByteToMessageDecoder，然<code>后实现void decode(ChannelHandlerContext ctx, ByteBuf in, List&lt;Object&gt; out)</code>抽象方法即可完成ByteBuf到POJO类的转换。</p>
+<p>由于ByteToMessageDecoder并没有考虑TCP粘包和拆包的问题， 使用该解码器时需要用户自行处理该问题。正因为如此，对于大多数场景不会直接继承ByteToMessageDecoder，而是继承其他更高级的解码器来解决粘包拆包问题。</p>
+<h3 id="MessageToMessageDecoder"><a href="#MessageToMessageDecoder" class="headerlink" title="MessageToMessageDecoder"></a>MessageToMessageDecoder</h3><p>MessageToMessageDecoder是Netty的二次解码器，它的职责是将一个对象二次解码为其他对象。</p>
+<p>为什么叫做二次解码器？从SocketChannel读取到的TCP数据报是ByteBuf，实际上就是字节数组，我们首先需要将ByteBuf字节数组读取处理，转换为Java对象，然后对Java对象根据某些规则进行二次解码，将其解码为另一个POJO对象。因为MessageToMessageDecoder在ByteToMessageDecoder之后，所以称之为二次解码器。</p>
+<p>例如：以HTTP+XML协议栈为例，第一次解码往往是将字节数组解码为HttpRequest对象，然后对HttpRequest消息中的消息体字符串进行二次解码，将XML格式的字符串解码为POJO对象，这就用到了二次解码器。</p>
+<p>在使用的时候，用户的解码器只需要实现void decode(ChannelHandlerContext ctx, I msg, List out)抽象方法即可，由于它是将一个POJO解码为另一个POJO，所以不存在粘包拆包问题。</p>
+<h3 id="LengthFieldBasedFrameDecoder"><a href="#LengthFieldBasedFrameDecoder" class="headerlink" title="LengthFieldBasedFrameDecoder"></a>LengthFieldBasedFrameDecoder</h3><p>该解码器是一个比较常用的解决TCP粘包拆包问题的解码器。</p>
+<p>如何区分一个整包消息，通常由如下4种做法：</p>
+<ul>
+<li><p>  固定长度，例如120个字节代码一个整包消息，不足的前面补0，解码器在处理这类定长消息的时候比较简单，每次读取到指定长度的字节后进行解码</p>
+</li>
+<li><p>  通过回车换行符区分消息，例如FTP协议，这类区分消息的方式多用于文本协议</p>
+</li>
+<li><p>  通过分隔符区分整包消息</p>
+</li>
+<li><p>  通过指定长度来标识整包消息</p>
+</li>
+</ul>
+<p>由于TCP本身存在粘包和拆包问题，所以通常情况下必须自己处理半包消息。利用LengthFieldBasedFrameDecoder解码器可以自动解决半包问题，通常的用法如下：</p>
+<p>pipeline.addLast(new LengthFieldBasedFrameDecoder(1024, 0, 4));</p>
+<p>pipeline.addLast(new StringDecoder());</p>
+<p>复制代码</p>
+<p>将LengthFieldBasedFrameDecoder解码器加入ChannelPipeline，指定正确的参数组合，它可以将Netty的ByteBuf解码成单个的整包消息，后面的业务解码器拿到的就是完整的数据报，正常进行解码即可，不需要再考虑半包问题，方便了业务消息的解码。</p>
+<h3 id="MessageToByteEncoder"><a href="#MessageToByteEncoder" class="headerlink" title="MessageToByteEncoder"></a>MessageToByteEncoder</h3><p>MessageToByteEncoder负责将POJO对象编码成ByteBuf，用户的编码器继承MessageToByteEncoder，实现<code>void encode(ChannelHandlerContext ctx, I msg, ByteBuf out)</code>接口,示例代码：</p>
+<p>public class IntegerEncoder extends MessageToByteEncoder&lt;Integer&gt; {</p>
+<p>@Override</p>
+<p>protected void encode(ChannelHandlerContext channelHandlerContext, Integer integer, ByteBuf byteBuf) throws Exception {</p>
+<p>byteBuf.writeInt(integer);</p>
+<p>}</p>
+<p>}</p>
+<p>复制代码</p>
+<h3 id="MessageToMessageEncoder"><a href="#MessageToMessageEncoder" class="headerlink" title="MessageToMessageEncoder"></a>MessageToMessageEncoder</h3><p>将一个POJO对象编码为另一个对象，以HTTP+XML协议为例，它的一种实现发送是：先将POJO对象编码为XML字符串，再将字符串编码为HTTP请求或者应答消息。对于复杂协议，往往需要经历多次编码，为了便于功能扩展，可以通过多个编码器组合来实现相关功能。</p>
+<p>用户的解码器继承MessageToMessageEncoder解码器，实现<code>void encode(ChannelHandlerContext channelHandlerContext, Integer integer, List&lt;Object&gt; list)</code>方法列表。示例代码如下：</p>
+<p>public class IntegerToStringEncoder extends MessageToMessageEncoder&lt;Integer&gt; {</p>
+<p>@Override</p>
+<p>protected void encode(ChannelHandlerContext channelHandlerContext, Integer integer, List&lt;Object&gt; list) throws Exception {</p>
+<p>list.add(integer.toString());</p>
+<p>}</p>
+<p>}</p>
+<p>复制代码</p>
+<h3 id="LengthFieledPrepender"><a href="#LengthFieledPrepender" class="headerlink" title="LengthFieledPrepender"></a>LengthFieledPrepender</h3><p>如果协议中的第一个字段为长度字段，Netty提供了LengthFieledPrepender编码器， 它可以计算当前待发送的消息的二进制字节长度，将该长度添加到ByteBuf的缓冲区头中。</p>
+<p>例如编码前的字符为”HELLO,WORLD”占12字节，通过LengthFieledPrepender编码后，消息组成为消息长度字段+消息字符串本身，总的占14个字节。</p>
+]]></content>
+  </entry>
+  <entry>
+    <title></title>
+    <url>/2022/10/29/EventLoopGroup/</url>
+    <content><![CDATA[<h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><p><a href="#eventloopgroup">EventLoopGroup</a></p>
+<ul>
+<li><p>  <a href="#%E5%89%8D%E8%A8%80">前言</a></p>
+</li>
+<li><p>  <a href="#%E4%B8%89%E7%A7%8Dreactor%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B">三种Reactor线程模型</a></p>
+</li>
+<li><p>  <a href="#netty%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5">Netty线程模型最佳实践</a></p>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="EventLoopGroup"><a href="#EventLoopGroup" class="headerlink" title="EventLoopGroup"></a>EventLoopGroup</h1><h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>线程模型是Netty框架的核心，模型设计的好坏决定了框架的性能、并发量和安全性等架构质量。</p>
+<p>Netty的线程模型被精心的设计，既提升了框架的并发性能，又在很大程度避免锁，局部实现了无锁化设计。</p>
+<p>因此这篇文章将介绍Netty的线程模型，看看它的线程模型是如何设计用于支持高并发高性能的。</p>
+<h2 id="三种Reactor线程模型"><a href="#三种Reactor线程模型" class="headerlink" title="三种Reactor线程模型"></a>三种Reactor线程模型</h2><p>提到线程模型，比较经典的是Reactor线程模型，尽管不同的NIO框架对Reactor模型的实现有所差异，但是本质上还是遵循了Reactor的基础线程模型。</p>
+<p><strong>什么是Reactor线程模型？</strong></p>
+<p>Reactor线程模型是对于传统的I/O线程模型的一种优化。</p>
+<p>传统的I/O线程模型采用阻塞I/O来获取输入流数据，并且每个连接都需要独立的线程完成数据的输入、业务处理、数据返回等一个完整的操作链路。这种模型在高并发场景下，有两个比较明显的缺点：</p>
+<ul>
+<li><p>  每个连接都需要创建一个对应线程，线程大量创建占用大量的服务器资源</p>
+</li>
+<li><p>  线程没有数据可读情况下的阻塞会对性能造成很大的影响</p>
+</li>
+</ul>
+<p>Reactor线程模型为了解决这两个问题，提供了以下解决方案：</p>
+<ul>
+<li><p>  基于I/O多路复用：多个客户端连接共用一个阻塞对象，应用程序只需要在一个阻塞对象等待，无需阻塞等待所有连接。当某个连接有新的数据可以处理时，通过事件驱动通知应用程序，线程从阻塞状态返回，开始进行业务处理</p>
+</li>
+<li><p>  基于线程池技术减少线程创建：基于线程池，不必再为每一个连接创建线程，将连接完成后的业务处理分配给线程池进行调度</p>
+</li>
+</ul>
+<p><strong>Reactor线程模型图：</strong></p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/6d892cee9b44493c987be58a4af86bac~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.awebp"></p>
+<p>Reactor线程模型</p>
+<p>Reactor在一个单独的线程中进行，负责监听和分发事件。</p>
+<p>Reactor的两个核心组件：</p>
+<ul>
+<li><p>  EventDispatch：监听和分发事件，分发给适当的处理程序来对IO事件做出反应</p>
+</li>
+<li><p>  handlers是处理程序执行IO事件要完成的实际事件，Reactor 通过调度适当地处理程序来响应I/O事件，处理程序执行非阻塞操作。</p>
+</li>
+</ul>
+<p>有</p>
+<p>Reactor模式使用I/O复用监听事件，收到事件后，分发给某个线程去处理，这也是能进行网络高并发处理的关键。</p>
+<p>Netty的线程模型不是一成不变的，它实际取决于用户的启动参数配置。通过设置不同的启动参数，Netty可以同时支持Reactor单线程模型、多线程模型和主从Reactor多线程模型。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/fa5766f4f69443ffa74fc932f9c03369~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.awebp"></p>
+<p>Netty线程模型</p>
+<p>netty线程模型抽象出两组线程池：</p>
+<ul>
+<li><p>  BossGroup：专门负责接收客户端的连接</p>
+</li>
+<li><p>  WorkerGroup：专门负责网络的读写，业务处理</p>
+</li>
+</ul>
+<p>两者的类型都是NioEventLoopGroup，NioEventLoopGroup相当于一个事件循环组，这个组中有多个事件循环，每个事件循环是NioEventLoop。</p>
+<p>NioEventLoop表示一个不断循环的执行处理任务的线程，每个NioEventLoop都有一个selector，用于监听绑定在其上的socket网络通信。</p>
+<p>NioEventLoopGroup可以有多个线程，即可以有多个NioEventLoop（数量可以指定）</p>
+<p>每个Boss NioEventLoop执行的步骤：</p>
+<ul>
+<li><p>  轮询accept事件</p>
+</li>
+<li><p>  处理accept事件，与client事件建立连接，生成NIoSocketChannel，并将其注册到某个worker NIoEventLoop上的selector上</p>
+</li>
+<li><p>  处理任务队列的任务，即runTasks</p>
+</li>
+</ul>
+<p>每个Worker NioEventLoop循环执行的步骤：</p>
+<ul>
+<li><p>  轮询read/write事件</p>
+</li>
+<li><p>  处理IO事件，在对应的NIoSocketChannel 上进行处理</p>
+</li>
+<li><p>  处理任务队列的任务，即runTasks</p>
+</li>
+</ul>
+<p>每个Worker NioEventLoop处理业务时，会通过pipeline（管道），pipeline中包含了channel，管道中维护了很多的处理器。</p>
+<p>通过调整线程池的线程个数、是否共享线程池等方式，Netty的Reactor线程模型可以在单线程、多线程和主从线程模型之间切换，这种灵活配置方式可以最大程度满足不同用户的个性化定制。</p>
+<p>为了尽可能提升性能，Netty在很大地方进行了无锁化设计，例如在I/O线程内部进行串行操作，避免多线程竞争导致的性能下降问题。表面上看，串行设计似乎CPU利用率不高，并发程度不够，但是通过调整NIO线程池的线程参数，可以同时启动多个串行化的线程并行运行，这种局部无锁化的串行线程设计相比一个队列多个工作线程的模型更优。</p>
+<p>Netty的NioEventLoop读取到消息之后，直接调用ChannelPipeline的fireChannelRead(Object msg)。只要用户不主动切换线程，一直都是由NioEventLoop调用用户的Handler，期间不进行线程切换。这种串行化处理方式避免了多线程操作导致的锁的竞争。从性能角度看是最优的。</p>
+<p>Netty的NioEventLoop并不是一个纯粹的I/O线程，它除了负责I/O的读写之外，还可以处理以下两类任务：</p>
+<ul>
+<li><p>  系统Task：通过调用NioEventLoop的execute(Runnable task)方法实现，Netty中有很多系统Task，主要用于：当I/O线程和用户线程同时操作网络资源时，为了防止并发操作导致的锁竞争，将用户线程的操作封装成Task放入消息队列中，由I/O线程负责执行，这样就实现了无锁化。</p>
+</li>
+<li><p>  定时Task：通过调用NioEventLoop的schedule(Runnable command, long delay, TimeUnit unit)方法实现</p>
+</li>
+</ul>
+<h2 id="Netty线程模型最佳实践"><a href="#Netty线程模型最佳实践" class="headerlink" title="Netty线程模型最佳实践"></a>Netty线程模型最佳实践</h2><ul>
+<li><p>创建两个NioEventLoopGroup，用于逻辑分离NIO Acceptor和NIO I/O线程</p>
+<p>  NioEventLoopGroup bossGroup = new NioEventLoopGroup();&#x20;</p>
+<p>  NioEventLoopGroup workerGroup = new NioEventLoopGroup();</p>
+<p>  复制代码</p>
+</li>
+</ul>
+<p>BossGroup和WorkerGroup的线程（NioEventLoop）数量：默认是CPU核心数的两倍。</p>
+<p>可以通过构造函数传入线程数量指定线程池的线程数量。</p>
+<ul>
+<li><p>  尽量不要在ChannleHandler中启动用户线程</p>
+</li>
+<li><p>  解码要放在NIO线程调用的解码handler中进行，不要切换到用户线程中完成消息的解码</p>
+</li>
+<li><p>  如果业务处理逻辑很简单，没有复杂的业务逻辑计算，没有可能会导致线程被阻塞的磁盘操作、数据库操作、网络操作等，可以直接在NIO线程上完成业务逻辑编排，不需要切换到用户线程。</p>
+</li>
+<li><p>  如果业务逻辑处理复杂，不要在NIO线程上完成，建议将解码后的POJO消息封装成Task，派发到业务线程池中由业务线程执行，以保证NIO线程尽快被释放，处理其他I/O操作</p>
+</li>
+</ul>
+<p>推荐的线程数量计算公式有两种：</p>
+<ul>
+<li><p>  公式一：线程数量=（线程总时间/瓶颈资源时间）X 瓶颈资源的线程并行数</p>
+</li>
+<li><p>  公式二：QPS=1000/线程总时间 X 线程数</p>
+</li>
+</ul>
+<p>由于用户场景的不同，对于一些复杂的系统，实际上很难计算出最优的线程配置，只能根据测试数据和用户场景，结合公式给出一个相对合理的范围，然后对范围内的数据进行性能测试，选择相对最优值。</p>
+]]></content>
+  </entry>
+  <entry>
+    <title>java</title>
+    <url>/2022/10/29/java/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+</search>

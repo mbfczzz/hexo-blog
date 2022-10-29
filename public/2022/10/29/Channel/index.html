@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+
+
+<html lang="en">
+  
+
+    <head>
+      <meta charset="utf-8" />
+       
+      <meta name="keywords" content="live life love last" />
+       
+      <meta name="description" content="a boy zzzzz" />
+      
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title> 吾</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      
+<link rel="stylesheet" href="/css/fonts/remixicon.css">
+
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.staticfile.org/pace/1.2.4/pace.min.js"></script>
+       
+ 
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bulma@5.0.1/bulma.min.css"
+      />
+      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.min.js"></script>
+
+      <!-- mermaid -->
+      
+      <style>
+        .swal2-styled.swal2-confirm {
+          font-size: 1.6rem;
+        }
+      </style>
+    </head>
+  </html>
+</html>
+
+
+<body>
+  <div id="app">
+    
+      
+      <canvas width="1777" height="841"
+        style="position: fixed; left: 0px; top: 0px; z-index: 99999; pointer-events: none;"></canvas>
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-Channel"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+     
+    <div class="article-meta">
+      <a href="/2022/10/29/Channel/" class="article-date">
+  <time datetime="2022-10-29T05:24:00.633Z" itemprop="datePublished">2022-10-29</time>
+</a>   
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> Word count:</span>
+            <span class="post-count">2.2k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> Reading time≈</span>
+            <span class="post-count">8 min</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><p><a href="#channel">Channel</a></p>
+<ul>
+<li><p>  <a href="#channel%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86">Channel工作原理</a></p>
+</li>
+<li><p><a href="#channel%E6%A0%B8%E5%BF%83%E5%8A%9F%E8%83%BD">Channel核心功能</a></p>
+<ul>
+<li><p>  <a href="#%E7%BD%91%E7%BB%9Cio%E6%93%8D%E4%BD%9C">网络I/O操作</a></p>
+</li>
+<li><p>  <a href="#%E5%85%B6%E4%BB%96">其他</a></p>
+</li>
+<li><p>  <a href="#channel%E4%B8%AD%E7%9A%84unsafe">Channel中的Unsafe</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="Channel"><a href="#Channel" class="headerlink" title="Channel"></a>Channel</h1><p>提起Channel，我们并不陌生，在JDK NIO中也有Channel通道的概念。Channel是网络通信的载体，提供了基本的用于I/O操作的API，如：register、bind、connect、read、write、flush等。</p>
+<p>Netty的Channel是在JDK的NIO Channel基础上进行封装的，提供了更高层次的抽象，同时屏蔽了底层Socket的复杂性，赋予了Channel更加强大的功能。</p>
+<p>Netty为什么不使用JDK NIO原生的Channel呢？主要是基于以下几个原因：</p>
+<ul>
+<li><p>  JDK中的SocketChannel和ServerSocketChannel没有统一的Channel接口供业务开发者使用，对于用户而言，没有统一的操作视图，使用起来并不方便</p>
+</li>
+<li><p>  JDK中的SocketChannel和ServerSocketChannel的主要职责是网络I/O操作，由于它们是SPI类接口，由具体的虚拟机厂家来提供，所以通过继承SPI功能类来扩展其功能的难度很大；直接实现SocketChannel和ServerSocketChannel，其工作量和重新开发一个新的Channel功能更类是差不多的</p>
+</li>
+<li><p>  Netty的Channel需要能够跟Netty的整体架构融合在一起，例如I/O模型、基于ChannelPipeLine的定制模型，以及基于元数据描述配置化的TCP参数等，这些JDK的SocketChannel和ServerSocketChannel都没有提供，需要重新进行封装</p>
+</li>
+<li><p>  自定义的Channel，功能实现更加灵活</p>
+</li>
+</ul>
+<p>基于以上原因，Netty自行封装了Channel接口，来代替JDK NIO原生的Channel，使得Channel能够更好地适配Netty整体框架，并且其扩展性也更强。</p>
+<p>在Netty中，提供了多种不同的Channel实现，主要的几种实现如下：</p>
+<ul>
+<li><p>  FileChannel：用于文件操作</p>
+</li>
+<li><p>  SelectableChannel：用于网络连接，根据网络协议不同，可以分为：</p>
+</li>
+<li><p>*   ServerSocketChannel和SocketChannle：用于TCP协议的数据读写，分别对应服务端和客户端的通道</p>
+<ul>
+<li>  DatagramChannel：用于UDP协议的数据读写</li>
+</ul>
+</li>
+</ul>
+<h2 id="Channel工作原理"><a href="#Channel工作原理" class="headerlink" title="Channel工作原理"></a>Channel工作原理</h2><ul>
+<li><p>  一旦有客户端成功与服务端建立连接，将新建一个Channel与该客户端进行绑定</p>
+</li>
+<li><p>  Channel从线程组NioEventloopGroup中获取一个NioEventloop，并注册到该NioEventloop，后续该Channel的生命周期内都与该NioEventloop绑定在一起</p>
+</li>
+<li><p>  Channel同客户端进行网络连接、关闭和读写，生成对应的even事件，由Selector轮询到后，交给Worker线程组中的调度线程去执行</p>
+</li>
+</ul>
+<p>在不同的生命周期阶段，Channel会有不同的状态，并且能够在不同的状态之间进行流转和切换。</p>
+<p>Channel的状态有四种：</p>
+<ul>
+<li><p>  ChannelUnregistered：已创建但还未被注册到监听器中</p>
+</li>
+<li><p>  ChannelRegistered ：已注册到监听器EventLoop中</p>
+</li>
+<li><p>  ChannelActive ：连接完成处于活跃状态，此时可以接收和发送数据</p>
+</li>
+<li><p>  ChannelInactive ：非活跃状态，代表连接未建立或者已断开</p>
+</li>
+</ul>
+<h2 id="Channel核心功能"><a href="#Channel核心功能" class="headerlink" title="Channel核心功能"></a>Channel核心功能</h2><p>我们先来看一下Channel接口的顶层定义：</p>
+<p>public interface Channel extends AttributeMap, ChannelOutboundInvoker, Comparable&lt;Channel&gt; {</p>
+<p>ChannelId id();</p>
+<p>EventLoop eventLoop();</p>
+<p>Channel parent();</p>
+<p>ChannelConfig config();</p>
+<p>boolean isOpen();</p>
+<p>boolean isRegistered();</p>
+<p>boolean isActive();</p>
+<p>ChannelMetadata metadata();</p>
+<p>SocketAddress localAddress();</p>
+<p>SocketAddress remoteAddress();</p>
+<p>ChannelFuture closeFuture();</p>
+<p>boolean isWritable();</p>
+<p>long bytesBeforeUnwritable();</p>
+<p>long bytesBeforeWritable();</p>
+<p>Channel.Unsafe unsafe();</p>
+<p>ChannelPipeline pipeline();</p>
+<p>ByteBufAllocator alloc();</p>
+<p>Channel read();</p>
+<p>Channel flush();</p>
+<p>public interface Unsafe {</p>
+<p>Handle recvBufAllocHandle();</p>
+<p>SocketAddress localAddress();</p>
+<p>SocketAddress remoteAddress();</p>
+<p>void register(EventLoop var1, ChannelPromise var2);</p>
+<p>void bind(SocketAddress var1, ChannelPromise var2);</p>
+<p>void connect(SocketAddress var1, SocketAddress var2, ChannelPromise var3);</p>
+<p>void disconnect(ChannelPromise var1);</p>
+<p>void close(ChannelPromise var1);</p>
+<p>void closeForcibly();</p>
+<p>void deregister(ChannelPromise var1);</p>
+<p>void beginRead();</p>
+<p>void write(Object var1, ChannelPromise var2);</p>
+<p>void flush();</p>
+<p>ChannelPromise voidPromise();</p>
+<p>ChannelOutboundBuffer outboundBuffer();</p>
+<p>}</p>
+<p>}</p>
+<p>可以将Channel的功能大概分为两大类：</p>
+<ul>
+<li><p>  网络I/O操作：完成网络I/O的读写、连接关闭等操作</p>
+</li>
+<li><p>  获取Channel通道元数据信息</p>
+</li>
+</ul>
+<h3 id="网络I-O操作"><a href="#网络I-O操作" class="headerlink" title="网络I/O操作"></a>网络I/O操作</h3><p>针对网络I/O相关的方法如下：</p>
+<p>boolean isOpen();</p>
+<p>boolean isRegistered();</p>
+<p>boolean isActive();</p>
+<p>ChannelFuture closeFuture();</p>
+<p>boolean isWritable();</p>
+<p>long bytesBeforeUnwritable();</p>
+<p>long bytesBeforeWritable();</p>
+<p>Channel read();</p>
+<p>Channel flush();</p>
+<p>复制代码</p>
+<p>对这些方法的介绍如下：</p>
+<p>判断Channel通道状态：</p>
+<ul>
+<li><p>  isOpen()：判断当前Channel是否已经打开</p>
+</li>
+<li><p>  isRegistered()：判断当Channel是否已经注册到NioEventLoop上</p>
+</li>
+<li><p>  isActive()：判断当前Channel是否已经处于激活状态</p>
+</li>
+</ul>
+<p>操作：</p>
+<ul>
+<li><p>  read()：从当前的Channel中读取数据到第一个inbound缓冲区中，如果数据被成功读取，触发ChannelHandler.channelRead(ChannelHandlerContext, Object)事件，读取操作API调用完成之后，紧接着会触发ChannelHandler.channelReadComplete(ChannelHandlerContext)事件，这样业务的ChannelHandler可以决定是否需要继续读取数据。如果已经有读操作请求被挂起，则后续的读操作会被忽略。</p>
+</li>
+<li><p>  flush()：将写入的数据刷入Channel</p>
+</li>
+</ul>
+<h3 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h3><p>ChannelId id();</p>
+<p>EventLoop eventLoop();</p>
+<p>Channel parent();</p>
+<p>ChannelConfig config();</p>
+<p>ChannelMetadata metadata();</p>
+<p>SocketAddress localAddress();</p>
+<p>SocketAddress remoteAddress();</p>
+<p>ChannelPipeline pipeline();</p>
+<p>复制代码</p>
+<p>相关API介绍如下：</p>
+<ul>
+<li><p>  id()：在客户端连接建立后，生成Channel通道的时候会为每一个Channel分配一个唯一的ID，该ID可能的生成策略有：</p>
+</li>
+<li><p>*   机器的MAC地址（EUI-48或者EUI-64）等可以代表全局唯一的信息</p>
+<ul>
+<li><p>  当前的进程ID</p>
+</li>
+<li><p>  当前系统时间的毫秒</p>
+</li>
+<li><p>  当前系统时间纳秒数</p>
+</li>
+<li><p>  32位的随机整型数</p>
+</li>
+<li><p>  32位自增的序列数</p>
+</li>
+</ul>
+</li>
+<li><p>  eventLoop()：在上面说过Channel建立后会与EventLoopGroop中分配的一个EventLoop线程绑定，该方法就可以获取到Channel绑定的EventLoop。EventLoop本质上就是处理网络I/O读写事件的Reactor线程。在Netty中，它不仅用来处理网络事件，也可以用来执行定时任务和用户自定义NioTask任务等。</p>
+</li>
+<li><p>  parent()：返回该Channel的父Channel。对于服务端的Channel而言，它的父Channel为空；对于客户端Channel而言，它的父Channel就是创建它的ServerSocketChannel</p>
+</li>
+<li><p>  config()：获取当前Channel的配置信息，例如：CONNECT_TIMEOUT_MILLIS</p>
+</li>
+<li><p>  metadata()：获取当前Channel的元数据描述信息，包括TCP参数配置等</p>
+</li>
+<li><p>  localAddress()：获取当前Channel的本地绑定地址</p>
+</li>
+<li><p>  remoteAddress()：获取当前Channel通信的远程Socket地址</p>
+</li>
+<li><p>  pipeline()：通过pipeline()方法，可以获取到Channel的ChannelPipeline对象，ChannelPipeline也是Netty的核心组件，它可以理解为是ChannelHandler的容器，用于处理Channel的所有事件</p>
+</li>
+</ul>
+<p>总的来说，Channel顶层接口只定义了一些基础的核心能力，在开发过程中，比较常用的NioServerSocketChannel和NioSocketChannel这两个服务端和客户端的类均继承于：AbstractChannel。Channel的初始化核心操作都是交由该父类来完成的，并且扩充了很多Channel接口中的能力。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/4961706b190540fc80737925e4bda4aa~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>在该类中维护了Channel的父Channel，ID，pipeline等重要组件，并且通过构造方法来完成初始化。通过变量定义可以看出，AbstractChannel聚合了所有Channel使用到的能力对象，由AbstractChannel提供初始化和统一的封装，如果功能和子类强相关，则定义为抽象方法由子类来实现。</p>
+<h3 id="Channel中的Unsafe"><a href="#Channel中的Unsafe" class="headerlink" title="Channel中的Unsafe"></a>Channel中的Unsafe</h3><p>我们在Channel接口中可以看到内部定义了一个Unsafe类，并且里面定义了很多与Channel功能很像的方法，那这个类到底有什么用呢？</p>
+<p>Channel接口中Unsafe接口的定义：</p>
+<p>public interface Unsafe {</p>
+<p>Handle recvBufAllocHandle();</p>
+<p>SocketAddress localAddress();</p>
+<p>SocketAddress remoteAddress();</p>
+<p>void register(EventLoop var1, ChannelPromise var2);</p>
+<p>void bind(SocketAddress var1, ChannelPromise var2);</p>
+<p>void connect(SocketAddress var1, SocketAddress var2, ChannelPromise var3);</p>
+<p>void disconnect(ChannelPromise var1);</p>
+<p>void close(ChannelPromise var1);</p>
+<p>void closeForcibly();</p>
+<p>void deregister(ChannelPromise var1);</p>
+<p>void beginRead();</p>
+<p>void write(Object var1, ChannelPromise var2);</p>
+<p>void flush();</p>
+<p>ChannelPromise voidPromise();</p>
+<p>ChannelOutboundBuffer outboundBuffer();</p>
+<p>}</p>
+<p>复制代码</p>
+<p>实际上Unsafe是Channel的一个辅助类，它不直接暴露给用户使用，它是Channel的一个辅助类，但是实际上Channel的网络I/O操作基本上都是由Unsafe负责实现的。</p>
+<p>Unsafe继承关系如图：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/5c177cccac324024940a3b0e535146a6~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>Unsafe中的核心方法介绍：</p>
+<ul>
+<li><p>  register()：用于将当前Unsafe对应的Channel注册到EventLoop的多路复用器上，然后调用DefaultChannelPipeLine的fireChannelRegistered方法。如果Channel被激活，则调用DefaultChannelPipeLine的fireChannelActive方法</p>
+</li>
+<li><p>  bind()：主要用于绑定指定的端口，对于服务端，用于绑定监听端口，可以设置backlog参数；对于客户端，主要用于指定客户端Channel的本地绑定Socket地址</p>
+</li>
+<li><p>  connect()：首先获取当前的连接状态进行缓存，然后发起连接操作，如果连接成功，则返回true；如果没连接上，服务端没有返回ACK应答，连接结果不确定，返回false；连接失败的话直接抛出I/O异常</p>
+</li>
+<li><p>  finishConnect方法()：客户端接收到服务端的TCP握手应答消息，通过SocketChannel的finishConnect方法对连接结果进行判断</p>
+</li>
+<li><p>  disconnect()：用于客户端或者服务器主动关闭连接</p>
+</li>
+<li><p>  close()：在链路关闭之前需要先判断是否处于刷新状态，如果处于刷新状态，说明还有消息尚未发送出去，需要等到所有消息发送完成后再关闭链路，因此将关闭操作封装成Runnable稍后再执行</p>
+</li>
+<li><p>  write()：将消息添加到环形发送数组中，并不是真正的写Channel，真正的写入需要调用flush方法</p>
+</li>
+<li><p>  flush()方法：将发送缓冲区中待发送的消息全部写入Channel中，并发送给通信方</p>
+</li>
+</ul>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>Copyright： </strong>
+          
+          Copyright is owned by the author. For commercial reprints, please contact the author for authorization. For non-commercial reprints, please indicate the source.
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://mbfczzzz.top/2022/10/29/Channel/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2022/10/29/EventLoopGroup/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            (no title)
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2022/10/29/Pipeline%E5%92%8CChannelHandler/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title"></div>
+      </a>
+    
+  </nav>
+
+  
+   
+    
+    <script src="https://cdn.staticfile.org/twikoo/1.4.18/twikoo.all.min.js"></script>
+    <div id="twikoo" class="twikoo"></div>
+    <script>
+        twikoo.init({
+            envId: ""
+        })
+    </script>
+ 
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2022
+        <i class="ri-heart-fill heart_icon"></i> mbfczzzz
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>Visitors:<span id="busuanzi_value_site_uv"></span></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>Views:<span id="busuanzi_value_page_pv"></span></span>
+</span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src='https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914'></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>    
+    </main>
+    <div class="float_btns">
+      <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+    </div>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="吾"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tools">工具</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/friends">友链</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/2019/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="/images/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="/images/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-3.6.0.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.staticfile.org/jquery-modal/0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.staticfile.org/jquery-modal/0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.staticfile.org/justifiedGallery/3.8.1/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.staticfile.org/photoswipe/4.1.3/default-skin/default-skin.min.css">
+<script src="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe.min.js"></script>
+<script src="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+ 
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+ 
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+ 
+<script src="/js/clickBoom2.js"></script>
+ 
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.staticfile.org/clipboard.js/2.0.10/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+ 
+<script src="/js/dz.js"></script>
+ 
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+    <div id="music">
+    
+    
+    
+    <iframe frameborder="no" border="1" marginwidth="0" marginheight="0" width="200" height="52"
+        src="//music.163.com/outchain/player?type=2&id=22707008&auto=1&height=32"></iframe>
+</div>
+
+<style>
+    #music {
+        position: fixed;
+        right: 15px;
+        bottom: 0;
+        z-index: 998;
+    }
+</style>
+    
+    
+
+  </div>
+</body>
+
+</html>

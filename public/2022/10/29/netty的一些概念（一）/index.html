@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+
+
+<html lang="en">
+  
+
+    <head>
+      <meta charset="utf-8" />
+       
+      <meta name="keywords" content="live life love last" />
+       
+      <meta name="description" content="a boy zzzzz" />
+      
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title> 吾</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/favicon.ico" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      
+<link rel="stylesheet" href="/css/fonts/remixicon.css">
+
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.staticfile.org/pace/1.2.4/pace.min.js"></script>
+       
+ 
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bulma@5.0.1/bulma.min.css"
+      />
+      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.min.js"></script>
+
+      <!-- mermaid -->
+      
+      <style>
+        .swal2-styled.swal2-confirm {
+          font-size: 1.6rem;
+        }
+      </style>
+    </head>
+  </html>
+</html>
+
+
+<body>
+  <div id="app">
+    
+      
+      <canvas width="1777" height="841"
+        style="position: fixed; left: 0px; top: 0px; z-index: 99999; pointer-events: none;"></canvas>
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-netty的一些概念（一）"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+     
+    <div class="article-meta">
+      <a href="/2022/10/29/netty%E7%9A%84%E4%B8%80%E4%BA%9B%E6%A6%82%E5%BF%B5%EF%BC%88%E4%B8%80%EF%BC%89/" class="article-date">
+  <time datetime="2022-10-29T05:24:00.615Z" itemprop="datePublished">2022-10-29</time>
+</a>   
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> Word count:</span>
+            <span class="post-count">4.3k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> Reading time≈</span>
+            <span class="post-count">15 min</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h2 id="目录"><a href="#目录" class="headerlink" title="目录"></a>目录</h2><ul>
+<li><p><a href="#netty%E7%9A%84%E4%B8%80%E4%BA%9B%E6%A6%82%E5%BF%B5%E4%B8%80">netty的一些概念（一）</a></p>
+<ul>
+<li><p>  <a href="#%E5%8D%8F%E8%AE%AE">协议</a></p>
+</li>
+<li><p><a href="#bionioaio">BIO/NIO/AIO</a></p>
+<ul>
+<li><ul>
+<li><p>  <a href="#1bio%E5%90%8C%E6%AD%A5%E9%98%BB%E5%A1%9Eio">1、BIO（同步阻塞IO）</a></p>
+</li>
+<li><p>  <a href="#2nio%E5%90%8C%E6%AD%A5%E9%9D%9E%E9%98%BB%E5%A1%9Eio">2、NIO（同步非阻塞IO）</a></p>
+</li>
+<li><p>  <a href="#3aio%E5%BC%82%E6%AD%A5%E9%9D%9E%E9%98%BB%E5%A1%9Eio">3、AIO（异步非阻塞IO）</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p><a href="#netty%E6%9E%B6%E6%9E%84">Netty架构</a></p>
+<ul>
+<li><p>  <a href="#1-core-%E6%A0%B8%E5%BF%83%E5%B1%82">1. Core 核心层</a></p>
+</li>
+<li><p>  <a href="#2-protocol-support-%E5%8D%8F%E8%AE%AE%E6%94%AF%E6%8C%81%E5%B1%82">2. Protocol Support 协议支持层</a></p>
+</li>
+<li><p>  <a href="#3-transport-service-%E4%BC%A0%E8%BE%93%E6%9C%8D%E5%8A%A1%E5%B1%82">3. Transport Service 传输服务层</a></p>
+</li>
+</ul>
+</li>
+<li><p><a href="#%E4%BA%8Cnetty-%E9%80%BB%E8%BE%91%E6%9E%B6%E6%9E%84">二、Netty 逻辑架构</a></p>
+<ul>
+<li><p>  <a href="#1-%E7%BD%91%E7%BB%9C%E9%80%9A%E4%BF%A1%E5%B1%82">1. 网络通信层</a></p>
+</li>
+<li><p>  <a href="#2-%E4%BA%8B%E4%BB%B6%E8%B0%83%E5%BA%A6%E5%B1%82">2. 事件调度层</a></p>
+</li>
+<li><p>  <a href="#3-%E6%9C%8D%E5%8A%A1%E7%BC%96%E6%8E%92%E5%B1%82">3. 服务编排层</a></p>
+</li>
+</ul>
+</li>
+<li><p>  <a href="#%E4%B8%89%E7%BB%84%E4%BB%B6%E5%85%B3%E7%B3%BB%E6%A2%B3%E7%90%86">三、组件关系梳理</a></p>
+</li>
+<li><p><a href="#%E5%9B%9Bnetty-%E6%BA%90%E7%A0%81%E7%BB%93%E6%9E%84">四、Netty 源码结构</a></p>
+<ul>
+<li><ul>
+<li><p>  <a href="#core-%E6%A0%B8%E5%BF%83%E5%B1%82%E6%A8%A1%E5%9D%97">Core 核心层模块</a></p>
+</li>
+<li><p>  <a href="#protocol-support-%E5%8D%8F%E8%AE%AE%E6%94%AF%E6%8C%81%E5%B1%82%E6%A8%A1%E5%9D%97">Protocol Support 协议支持层模块</a></p>
+</li>
+<li><p>  <a href="#transport-service-%E4%BC%A0%E8%BE%93%E6%9C%8D%E5%8A%A1%E5%B1%82%E6%A8%A1%E5%9D%97">Transport Service 传输服务层模块</a></p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h1 id="netty的一些概念（一）"><a href="#netty的一些概念（一）" class="headerlink" title="netty的一些概念（一）"></a>netty的一些概念（一）</h1><h2 id="协议"><a href="#协议" class="headerlink" title="协议"></a>协议</h2><ul>
+<li>  网络协议为计算机网络中进行数据交换而建立的规则、标准或约定的集合 例如平时我们签订的合同，主要用于约束两方的一些行为以及必须遵守的规则和约定，网络协议亦是如此，如果想要双方能够达成通信，必须约束双方，如果两个终端使用的字符集不一样，那么两个终端就不能识别对方发送的消息，所以无法完成通信，为了能进行通信，规定每个终端都要将各自字符集中的字符先变换为标准字符集的字符后，才进入网络传送，到达目的终端之后，再变换为该终端字符集的字符</li>
+</ul>
+<h2 id="BIO-NIO-AIO"><a href="#BIO-NIO-AIO" class="headerlink" title="BIO/NIO/AIO"></a>BIO/NIO/AIO</h2><h4 id="1、BIO（同步阻塞IO）"><a href="#1、BIO（同步阻塞IO）" class="headerlink" title="1、BIO（同步阻塞IO）"></a>1、BIO（同步阻塞IO）</h4><ul>
+<li><p>  服务端创建一个<strong>ServerSocket</strong>，客户端就有一个Socket去链接这个ServerSocket，然后ServerSocket接收到客户端的Socket请求之后就会建立一个专属的<strong>Socket+线程</strong>去和<strong>客户端的Socket</strong>去通信（长时间维护）</p>
+</li>
+<li><p>  <strong>同步阻塞通信</strong>：客户端发送一个请求，服务端Socket就进行处理后返回，响应必须是等待处理完毕之后才会返回的，在这之前是什么也做不了。</p>
+</li>
+<li><p>  缺点：每次一个客户端的接入就会有一个线程+Socket对其进行通信，这会导致客户端接入太多，服务端线程过多，导致崩溃。</p>
+</li>
+</ul>
+<p>*</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2020/4/7/17153ff087c520ea~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h4 id="2、NIO（同步非阻塞IO）"><a href="#2、NIO（同步非阻塞IO）" class="headerlink" title="2、NIO（同步非阻塞IO）"></a>2、NIO（同步非阻塞IO）</h4><ul>
+<li><p>  <strong>Buffer</strong>（缓冲区）：<strong>channel将数据写入Buffer</strong>，然后从Buffer中读取数据，包括int、Long、CharBuffer等多种数据类型。</p>
+</li>
+<li><p>  <strong>channel</strong>：通过channel进行数据的读写</p>
+</li>
+<li><p>  <strong>selector</strong>（多路复用器）：<strong>selector会轮询channel</strong>，如果某个channel中发生了数据请求，selector就会将通过SelectionKey会哦去有数据请求的channel，进行IO操作。一个Selector（一个线程）可以轮询上千万个channel，也就是客户端可以接入的数量激增。</p>
+</li>
+<li><p>  通过一个线程轮询大量的channel，每次获取一批有事件的channel，然后<strong>对每个请求启动一个线程</strong>进行处理，并设置一个线程池，当线程处理完毕以后，就回收线程，就不会像BIO需要一直维持为每个客户端创建的<strong>Socket+线程</strong>。</p>
+</li>
+</ul>
+<p>*</p>
+<p><img src="https://p1-jj.byteimg.com/tos-cn-i-t2oaga2asx/gold-user-assets/2020/4/7/17153ff2daf38c34~tplv-t2oaga2asx-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h4 id="3、AIO（异步非阻塞IO）"><a href="#3、AIO（异步非阻塞IO）" class="headerlink" title="3、AIO（异步非阻塞IO）"></a>3、AIO（异步非阻塞IO）</h4><ul>
+<li><p>  基于Proactor模型，每个连接发送的请求，都会绑定一个Buffer，然后<strong>通知操作系统异步的完成读操作</strong>，此时程序可以去干别的事，操作系统完成数据的读取之后，就会回调接口，将读出的数据给你。</p>
+</li>
+<li><p>  将数据进行处理，接着将结果返回</p>
+</li>
+<li><p>  写数据的时候也是<strong>给操作系统一个buffer</strong>，让操作系统获取数据完成写操作。</p>
+</li>
+</ul>
+<h2 id="Netty架构"><a href="#Netty架构" class="headerlink" title="Netty架构"></a>Netty架构</h2><p>在 <code>Netty</code> 的官网中，给出了一张图，图片如下：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3f5db436d44a47c58cc97e292cfdb4bc~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>上图摘自 <a href="https://link.juejin.cn/?target=https://netty.io/" title="Netty 官网首页">Netty 官网首页</a>。</p>
+<p>这就是 Netty 的模块划分图，可以清晰的看出，一共分为三个模块：</p>
+<ul>
+<li><p>  <code>Core 核心层</code>；</p>
+</li>
+<li><p>  <code>Protocol Support 协议支持层</code>；</p>
+</li>
+<li><p>  <code>Transport Services 传输服务层</code>。</p>
+</li>
+</ul>
+<p>可以看出，Netty 的模块设计具备较高的<strong>通用性和可扩展性</strong>。</p>
+<h3 id="1-Core-核心层"><a href="#1-Core-核心层" class="headerlink" title="1. Core 核心层"></a>1. Core 核心层</h3><p><code>Core 核心层</code>包含了 Netty 最为核心的功能，提供了底层网络通信的通用抽象和实现，包括可<strong>扩展的事件模型、通用的通信 API、支持零拷贝的 ByteBuf 等</strong>。</p>
+<h3 id="2-Protocol-Support-协议支持层"><a href="#2-Protocol-Support-协议支持层" class="headerlink" title="2. Protocol Support 协议支持层"></a>2. Protocol Support 协议支持层</h3><p>协议支持层基本上覆盖了主流协议的编解码实现，如 <code>HTTP、SSL、Protobuf、压缩、大文件传输、WebSocket、文本、二进制</code>等主流协议，此外 Netty 还支持自定义应用层协议。</p>
+<p>Netty 丰富的协议支持降低了用户的开发成本，基于 Netty 我们可以快速开发 HTTP、WebSocket 等服务。</p>
+<h3 id="3-Transport-Service-传输服务层"><a href="#3-Transport-Service-传输服务层" class="headerlink" title="3. Transport Service 传输服务层"></a>3. Transport Service 传输服务层</h3><p>传输服务层提供了网络传输能力的定义和实现方法。它支持 Socket、HTTP 隧道、虚拟机管道等传输方式。</p>
+<p>Netty 对 TCP、UDP 等数据传输做了抽象和封装，用户可以更聚焦在业务逻辑实现上，而不必关系底层数据传输的细节。</p>
+<h2 id="二、Netty-逻辑架构"><a href="#二、Netty-逻辑架构" class="headerlink" title="二、Netty 逻辑架构"></a>二、Netty 逻辑架构</h2><p>下图是 Netty 的逻辑处理架构。Netty 的逻辑处理架构为典型网络分层架构设计，共分为<code>网络通信层、事件调度层、服务编排层</code>，每一层各司其职。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3f8cfaef5caf4855b1fcf59d3f769565~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h3 id="1-网络通信层"><a href="#1-网络通信层" class="headerlink" title="1. 网络通信层"></a>1. 网络通信层</h3><p><strong>网络通信层的职责是执行网络 I/O 的操作。它支持多种网络协议和 I/O 模型的连接操作。当网络数据读取到内核缓冲区后，会触发各种网络事件，这些网络事件会分发给事件调度层进行处理</strong>。</p>
+<p>网络事件有连接事件、读事件、写事件等。</p>
+<p>网络通信层的<strong>核心组件</strong>包含 <strong>BootStrap、ServerBootStrap、Channel</strong> 三个组件。</p>
+<ul>
+<li>  <strong>BootStrap &amp; ServerBootStrap</strong></li>
+</ul>
+<p><code>Bootstrap</code> 是“引导”的意思，它主要负责整个 Netty 程序的启动、初始化、服务器连接等过程，它相当于一条主线，串联了 Netty 的其他核心组件。</p>
+<p>Netty 中的引导器共分为两种类型：一个为<strong>用于客户端引导的 Bootstrap</strong>，另一个为<strong>用于服务端引导的 ServerBootStrap</strong>，它们都继承自抽象类 <code>AbstractBootstrap</code>。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/833253fcd11c4f3f8bc8cf8f7aa02deb~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p><code>Bootstrap</code> 和 <code>ServerBootStrap</code> 十分相似，两者非常重要的区别在于 <code>Bootstrap</code> 可用于连接远端服务器，只绑定一个 <code>EventLoopGroup</code>。而 <code>ServerBootStrap</code> 则用于服务端启动绑定本地端口，会绑定两个 <code>EventLoopGroup</code>，这两个 EventLoopGroup 通常称为 Boss 和 Worker。</p>
+<p>ServerBootStrap 中的 Boss 和 Worker 是什么角色呢？它们之间又是什么关系？这里的 Boss 和 Worker 可以理解为“老板”和“员工”的关系。每个服务器中都会有一个 Boss，也会有一群做事情的 Worker。Boss 会不停地接收新的连接，然后将连接分配给一个个 Worker 处理连接。</p>
+<p><code>Boss</code> 对应 <code>Reactor</code> 模型中的 <code>MainReactor</code>，<code>Worker</code> 对应 <code>Reactor</code> 模型的 <code>SubReactor</code>。</p>
+<p>这里放一下 <code>Reactor</code> 的整体流程图。来源于：<a href="https://link.juejin.cn/?target=https://gee.cs.oswego.edu/dl/cpjslides/nio.pdf" title="gee.cs.oswego.edu/dl/cpjslide…">gee.cs.oswego.edu/dl/cpjslide…</a></p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/731e45eadd614f73a6909552e77dd33d~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>总结来说就是客户端使用 <code>Bootstrap</code> 引导类，服务端使用 <code>ServerBootStrap</code> 引导类。</p>
+<p>有了 Bootstrap 组件，我们可以更加方便地配置和启动 Netty 应用程序，它是整个 Netty 的入口，串接了 Netty 所有核心组件的初始化工作。</p>
+<ul>
+<li>  <strong>Channel</strong></li>
+</ul>
+<p><code>Channel</code> 的字面意思是“通道”，它是网络通信的载体。</p>
+<p><code>Channel</code> 提供了基本的 API 用于网络 I/O 操作，如 <code>register、bind、connect、read、write、flush</code> 等。</p>
+<p>Netty 自己实现的 Channel 是以 JDK NIO Channel 为基础的，相比较于 JDK NIO，Netty 的 Channel 提供了更高层次的抽象，同时屏蔽了底层 Socket 的复杂性，赋予了 Channel 更加强大的功能，你在使用 Netty 时基本不需要再与 Java Socket 类直接打交道。</p>
+<p>下图是 Channel 家族的图谱。<code>AbstractChannel</code> 是整个家族的基类，派生出 <code>AbstractNioChannel、AbstractOioChannel</code>、，每一种都代表了不同的 I/O 模型和协议类型。常用的 Channel 实现类有：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/81226d36b08b43bea0a42d8baf8babfc~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<ul>
+<li><p>  NioServerSocketChannel 异步 TCP 服务端。</p>
+</li>
+<li><p>  NioSocketChannel 异步 TCP 客户端。</p>
+</li>
+<li><p>  OioServerSocketChannel 同步 TCP 服务端。</p>
+</li>
+<li><p>  OioSocketChannel 同步 TCP 客户端。</p>
+</li>
+<li><p>  NioDatagramChannel 异步 UDP 连接。</p>
+</li>
+<li><p>  OioDatagramChannel 同步 UDP 连接。</p>
+</li>
+</ul>
+<p>注意：</p>
+<ul>
+<li><p>  Nio 为前缀的，代表使用的是 NIO 模型，所以是异步的。</p>
+</li>
+<li><p>  Oio 为前缀的，代表使用的是 BIO 模型，所以是同步的。</p>
+</li>
+</ul>
+<p>Channel 会有多种状态，如<strong>连接建立、连接注册、数据读写、连接销毁</strong>等。</p>
+<p>常见的状态对应事件如下：</p>
+<table>
+<thead>
+<tr>
+<th>事件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>channelRegistered</td>
+<td>Channel 创建后被注册到 EventLoop 上</td>
+</tr>
+<tr>
+<td>channelUnregistered</td>
+<td>Channel 创建后未注册或者从 EventLoop 取消注册</td>
+</tr>
+<tr>
+<td>channelActive</td>
+<td>Channel 处于就绪状态，可以被读写</td>
+</tr>
+<tr>
+<td>channelInactive</td>
+<td>Channel 处于非就绪状态</td>
+</tr>
+<tr>
+<td>channelRead</td>
+<td>Channel 可以从远端读取到数据</td>
+</tr>
+<tr>
+<td>channelReadComplete</td>
+<td>Channel 读取数据完成</td>
+</tr>
+</tbody></table>
+<p>总结一下：</p>
+<ul>
+<li><p>  BootStrap 和 ServerBootStrap 分别负责客户端和服务端的启动，它们是非常强大的辅助工具类，串联了 Netty 的系列核心组件；</p>
+</li>
+<li><p>  Channel 是网络通信的载体，提供了与底层 Socket 交互的能力。</p>
+</li>
+</ul>
+<h3 id="2-事件调度层"><a href="#2-事件调度层" class="headerlink" title="2. 事件调度层"></a>2. 事件调度层</h3><p><strong>事件调度层的职责是通过 Reactor 线程模型对各类事件进行聚合处理，通过 Selector 主循环线程集成多种事件（ I/O 事件、信号事件、定时事件等），实际的业务处理逻辑是交由服务编排层中相关的 Handler 完成</strong>。</p>
+<p>事件调度层的<strong>核心组件</strong>包括 <strong>EventLoopGroup、EventLoop</strong>。</p>
+<ul>
+<li>  <strong>EventLoopGroup &amp; EventLoop</strong></li>
+</ul>
+<p>EventLoopGroup 本质是一个线程池，主要负责接收 I/O 请求，并分配线程执行处理请求。</p>
+<p>EventLoopGroup 类图如下：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f171c5963b064ee48424931080803266~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>我们发现它继承了 Executor 类，可以证明它是一个线程池。</p>
+<p>那这就说明，由它管理的一个个 EventLoop，就是一个个线程，由 EventLoopGroup 负责分配 EventLoop 进行处理事件。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1a4e4c4bf9654c53a8ab2502664aac93~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>从上图中，我们可以总结出 EventLoopGroup、EventLoop、Channel 的几点关系。</p>
+<ol>
+<li><p> 一个 EventLoopGroup 往往包含一个或者多个 EventLoop。EventLoop 用于处理 Channel 生命周期内的所有 I/O 事件，如 accept、connect、read、write 等 I/O 事件。</p>
+</li>
+<li><p> EventLoop 同一时间会与一个线程绑定，每个 EventLoop 负责处理多个 Channel。</p>
+</li>
+<li><p> 每新建一个 Channel，EventLoopGroup 会选择一个 EventLoop 与其绑定。该 Channel 在生命周期内都可以对 EventLoop 进行多次绑定和解绑。</p>
+</li>
+</ol>
+<p>下图是 EventLoopGroup 的家族图谱。可以看出 Netty 提供了 EventLoopGroup 的多种实现，而且 EventLoop 则是 EventLoopGroup 的子接口，所以也可以把 EventLoop 理解为 EventLoopGroup，但是它只包含一个 EventLoop 。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/50f56d8b8ab04768a6a92f6d1611f1b8~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p><code>EventLoopGroup</code> 的实现类是 <code>NioEventLoopGroup</code>，<code>NioEventLoopGroup</code> 也是 Netty 中最被推荐使用的线程模型。</p>
+<p>NioEventLoopGroup 继承于 MultithreadEventLoopGroup，是基于 NIO 模型开发的，可以把 NioEventLoopGroup 理解为一个线程池，每个线程负责处理多个 Channel，而同一个 Channel 只会对应一个线程。</p>
+<p>EventLoopGroup 是 Netty 的核心处理引擎，那么 EventLoopGroup 和 Reactor 线程模型到底是什么关系呢？</p>
+<p>其实 EventLoopGroup 是 Netty Reactor 线程模型的具体实现方式，Netty 通过创建不同的 EventLoopGroup 参数配置，就可以支持 Reactor 的三种线程模型：</p>
+<ol>
+<li><p> <strong>单线程模型</strong>：EventLoopGroup 只包含<code>一个 EventLoop</code>，Boss 和 Worker 使用同一个EventLoopGroup；</p>
+</li>
+<li><p> <strong>多线程模型</strong>：EventLoopGroup 包含<code>多个 EventLoop</code>，Boss 和 Worker 使用同一个EventLoopGroup；</p>
+</li>
+<li><p> <strong>主从多线程模型</strong>：EventLoopGroup 包含多个 EventLoop，Boss 是主 Reactor，Worker 是从 Reactor，它们分别使用不同的 EventLoopGroup，主 Reactor 负责新的网络连接 Channel 创建，然后把 Channel 注册到从 Reactor。</p>
+</li>
+</ol>
+<h3 id="3-服务编排层"><a href="#3-服务编排层" class="headerlink" title="3. 服务编排层"></a>3. 服务编排层</h3><p><strong>服务编排层的职责是负责组装各类服务，它是 Netty 的核心处理链，用以实现网络事件的动态编排和有序传播</strong>。</p>
+<p>服务编排层的<strong>核心组件</strong>包括 <strong>ChannelPipeline</strong>、<strong>ChannelHandler、ChannelHandlerContext</strong>。</p>
+<ul>
+<li>  <strong>ChannelPipeline</strong></li>
+</ul>
+<p><code>ChannelPipeline</code> 是 Netty 的核心编排组件，<strong>负责组装各种 ChannelHandler</strong>，实际数据的编解码以及加工处理操作都是由 ChannelHandler 完成的。</p>
+<p>ChannelPipeline 可以理解为<strong>ChannelHandler 的实例列表</strong>——内部通过双向链表将不同的 ChannelHandler 链接在一起。当 I/O 读写事件触发时，ChannelPipeline 会依次调用 ChannelHandler 列表对 Channel 的数据进行拦截和处理。</p>
+<p><code>ChannelPipeline 是线程安全的</code>，因为每一个新的 Channel 都会对应绑定一个新的 ChannelPipeline。一个 ChannelPipeline 关联一个 EventLoop，一个 EventLoop 仅会绑定一个线程。</p>
+<p>ChannelPipeline、ChannelHandler 都是高度可定制的组件。开发者可以通过这两个核心组件掌握对 Channel 数据操作的控制权。下面我们看一下 ChannelPipeline 的结构图：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/3a386eede45142f79075eed075a3447c~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>从上图可以看出，ChannelPipeline 中包含入站 ChannelInboundHandler 和出站 ChannelOutboundHandler 两种处理器，我们结合客户端和服务端的数据收发流程来理解 Netty 的这两个概念。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/94ef10fa0234401196cbe8f16abfd40c~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>客户端和服务端都有各自的 ChannelPipeline。以客户端为例，数据从客户端发向服务端，该过程称为<strong>出站</strong>，反之则称为<strong>入站</strong>。数据入站会由一系列 InBoundHandler 处理，然后再以相反方向的 OutBoundHandler 处理后完成出站。</p>
+<p>我们经常使用的编码 Encoder 是出站操作，解码 Decoder 是入站操作。服务端接收到客户端数据后，需要先经过 Decoder 入站处理后，再通过 Encoder 出站通知客户端。所以客户端和服务端一次完整的请求应答过程可以分为三个步骤：客户端出站（请求数据）、服务端入站（解析数据并执行业务逻辑）、服务端出站（响应结果）。</p>
+<ul>
+<li>  <strong>ChannelHandler &amp; ChannelHandlerContext</strong></li>
+</ul>
+<p>下图描述了 Channel 与 ChannelPipeline 的关系，从图中可以看出，每创建一个 Channel 都会绑定一个新的 ChannelPipeline，ChannelPipeline 中每加入一个 ChannelHandler 都会绑定一个 ChannelHandlerContext。</p>
+<p>由此可见，ChannelPipeline、ChannelHandlerContext、ChannelHandler 三个组件的关系是密切相关的。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/abccbee47d484fd8a066690aaa39d4e7~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p>ChannelHandlerContext 用于保存 ChannelHandler 上下文，通过 ChannelHandlerContext 我们可以知道 ChannelPipeline 和 ChannelHandler 的关联关系。</p>
+<p>ChannelHandlerContext 可以实现 ChannelHandler 之间的交互，ChannelHandlerContext 包含了 ChannelHandler 生命周期的所有事件，如 connect、bind、read、flush、write、close 等。</p>
+<p>此外，你可以试想这样一个场景，如果每个 ChannelHandler 都有一些通用的逻辑需要实现，没有 ChannelHandlerContext 这层模型抽象，你是不是需要写很多相同的代码呢？</p>
+<h2 id="三、组件关系梳理"><a href="#三、组件关系梳理" class="headerlink" title="三、组件关系梳理"></a>三、组件关系梳理</h2><p>Netty 组件交互流程图：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/f001f6025ba3460c83710d0b0b8f9ccd~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<ul>
+<li><p>  服务端启动初始化时有 <code>Boss EventLoopGroup</code> 和 <code>Worker EventLoopGroup</code> 两个组件，其中 Boss 负责监听网络连接事件。当有新的网络连接事件到达时，则将 Channel 注册到 Worker EventLoopGroup。</p>
+</li>
+<li><p>  Worker EventLoopGroup 会被分配一个 EventLoop 负责处理该 Channel 的读写事件。每个 EventLoop 都是单线程的，通过 Selector 进行事件循环。</p>
+</li>
+<li><p>  当客户端发起 I/O 读写事件时，服务端 EventLoop 会进行数据的读取，然后通过 Pipeline 触发各种监听器进行数据的加工处理。</p>
+</li>
+<li><p>  客户端数据会被传递到 ChannelPipeline 的第一个 ChannelInboundHandler 中，数据处理完成后，将加工完成的数据传递给下一个 ChannelInboundHandler。</p>
+</li>
+<li><p>  当数据写回客户端时，会将处理结果在 ChannelPipeline 的 ChannelOutboundHandler 中传播，最后到达客户端。</p>
+</li>
+</ul>
+<h2 id="四、Netty-源码结构"><a href="#四、Netty-源码结构" class="headerlink" title="四、Netty 源码结构"></a>四、Netty 源码结构</h2><p><a href="https://link.juejin.cn/?target=https://github.com/netty/netty" title="Netty 源码">Netty 源码</a></p>
+<p>Netty 源码结构和 Netty 的模块划分大体相符合：</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/e06c191b201542229539f50fd4bc9de3~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<h4 id="Core-核心层模块"><a href="#Core-核心层模块" class="headerlink" title="Core 核心层模块"></a>Core 核心层模块</h4><p><strong>netty-common</strong>模块是 Netty 的核心基础包，提供了丰富的工具类，其他模块都需要依赖它。在 common 模块中，常用的包括<strong>通用工具类</strong>和<strong>自定义并发包</strong>。</p>
+<ul>
+<li><p>  通用工具类：比如定时器工具 TimerTask、时间轮 HashedWheelTimer 等。</p>
+</li>
+<li><p>  自定义并发包：比如异步模型 Future &amp; Promise、相比 JDK 增强的 FastThreadLocal 等。</p>
+</li>
+</ul>
+<p>在 <strong>netty-buffer 模块中</strong>Netty自己实现了的一个更加完备的 <strong>ByteBuf 工具类</strong>，用于网络通信中的数据载体。</p>
+<p>由于人性化的 Buffer API 设计，它已经成为 Java ByteBuffer 的完美替代品。ByteBuf 的动态性设计不仅解决了 ByteBuffer 长度固定造成的内存浪费问题，而且更安全地更改了 Buffer 的容量。此外 Netty 针对 ByteBuf 做了很多优化，例如缓存池化、减少数据拷贝的 CompositeByteBuf 等。</p>
+<p><strong>netty-resover</strong>模块主要提供了一些有关<strong>基础设施</strong>的解析工具，包括 IP Address、Hostname、DNS 等。</p>
+<h4 id="Protocol-Support-协议支持层模块"><a href="#Protocol-Support-协议支持层模块" class="headerlink" title="Protocol Support 协议支持层模块"></a>Protocol Support 协议支持层模块</h4><p><strong>netty-codec</strong>模块主要负责编解码工作，通过编解码实现原始字节数据与业务实体对象之间的相互转化。</p>
+<p>如下图所示，Netty 支持了大多数业界主流协议的编解码器，如 HTTP、HTTP2、Redis、XML 等，为开发者节省了大量的精力。此外该模块提供了抽象的编解码类 ByteToMessageDecoder 和 MessageToByteEncoder，通过继承这两个类我们可以轻松实现自定义的编解码逻辑。</p>
+<p><img src="https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/1223bbcec83e462487adf0fa213b9238~tplv-k3u1fbpfcp-zoom-in-crop-mark:4536:0:0:0.image"></p>
+<p><strong>netty-handler</strong>模块主要负责数据处理工作。Netty 中关于数据处理的部分，本质上是一串有序 handler 的集合。netty-handler 模块提供了开箱即用的 ChannelHandler 实现类，例如日志、IP 过滤、流量整形等，如果你需要这些功能，仅需在 pipeline 中加入相应的 ChannelHandler 即可。</p>
+<h4 id="Transport-Service-传输服务层模块"><a href="#Transport-Service-传输服务层模块" class="headerlink" title="Transport Service 传输服务层模块"></a>Transport Service 传输服务层模块</h4><p>netty-transport 模块可以说是 Netty 提供数据<strong>处理和传输的核心模块</strong>。该模块提供了很多非常重要的接口，如 Bootstrap、Channel、ChannelHandler、EventLoop、EventLoopGroup、ChannelPipeline 等。</p>
+<p>其中 Bootstrap 负责客户端或服务端的启动工作，包括创建、初始化 Channel 等；EventLoop 负责向注册的 Channel 发起 I/O 读写操作；ChannelPipeline 负责 ChannelHandler 的有序编排，这些组件在介绍 Netty 逻辑架构的时候都有所涉及。</p>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>Copyright： </strong>
+          
+          Copyright is owned by the author. For commercial reprints, please contact the author for authorization. For non-commercial reprints, please indicate the source.
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://mbfczzzz.top/2022/10/29/netty%E7%9A%84%E4%B8%80%E4%BA%9B%E6%A6%82%E5%BF%B5%EF%BC%88%E4%B8%80%EF%BC%89/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+      <a href="/2022/10/29/netty/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            (no title)
+          
+        </div>
+      </a>
+    
+    
+      <a href="/2022/10/29/netty%E7%9A%84%E4%B8%80%E4%BA%9B%E6%A6%82%E5%BF%B5%EF%BC%88%E4%BA%8C%EF%BC%89/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title"></div>
+      </a>
+    
+  </nav>
+
+  
+   
+    
+    <script src="https://cdn.staticfile.org/twikoo/1.4.18/twikoo.all.min.js"></script>
+    <div id="twikoo" class="twikoo"></div>
+    <script>
+        twikoo.init({
+            envId: ""
+        })
+    </script>
+ 
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2022
+        <i class="ri-heart-fill heart_icon"></i> mbfczzzz
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>Visitors:<span id="busuanzi_value_site_uv"></span></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>Views:<span id="busuanzi_value_page_pv"></span></span>
+</span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+        <script type="text/javascript" src='https://s9.cnzz.com/z_stat.php?id=1278069914&amp;web_id=1278069914'></script>
+        
+      </li>
+    </ul>
+  </div>
+</footer>    
+    </main>
+    <div class="float_btns">
+      <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+    </div>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/ayer-side.svg" alt="吾"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tools">工具</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/friends">友链</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/2019/about">关于我</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="/images/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="/images/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-3.6.0.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.staticfile.org/jquery-modal/0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.staticfile.org/jquery-modal/0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.staticfile.org/justifiedGallery/3.8.1/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.staticfile.org/photoswipe/4.1.3/default-skin/default-skin.min.css">
+<script src="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe.min.js"></script>
+<script src="https://cdn.staticfile.org/photoswipe/4.1.3/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+ 
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+ 
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<!-- ClickBoom2 -->
+ 
+<script src="/js/clickBoom2.js"></script>
+ 
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.staticfile.org/clipboard.js/2.0.10/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+ 
+<script src="/js/dz.js"></script>
+ 
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+    <div id="music">
+    
+    
+    
+    <iframe frameborder="no" border="1" marginwidth="0" marginheight="0" width="200" height="52"
+        src="//music.163.com/outchain/player?type=2&id=22707008&auto=1&height=32"></iframe>
+</div>
+
+<style>
+    #music {
+        position: fixed;
+        right: 15px;
+        bottom: 0;
+        z-index: 998;
+    }
+</style>
+    
+    
+
+  </div>
+</body>
+
+</html>
